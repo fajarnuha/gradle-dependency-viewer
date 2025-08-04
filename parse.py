@@ -106,7 +106,7 @@ def parse_dependencies(lines):
 
     return root_nodes
 
-def find_matches_and_relatives(nodes, keyword, kept_nodes, ancestors):
+def find_matches_and_relatives(nodes, keywords, kept_nodes, ancestors):
     """
     Recursively traverses the tree to find nodes that match the keyword,
     and adds them, their ancestors, and their direct children to the kept_nodes set.
@@ -114,7 +114,8 @@ def find_matches_and_relatives(nodes, keyword, kept_nodes, ancestors):
     for node in nodes:
         # Path from root to current node
         current_path = ancestors + [node]
-        if keyword.lower() in node.get('module', '').lower():
+        # Check if any of the keywords are in the module name
+        if any(keyword.lower() in node.get('module', '').lower() for keyword in keywords):
             # This node is a match. Keep it, all its ancestors, and all its direct children.
             for n in current_path:
                 kept_nodes.add(n['full'])  # Use 'full' as a unique identifier
@@ -122,7 +123,7 @@ def find_matches_and_relatives(nodes, keyword, kept_nodes, ancestors):
                 kept_nodes.add(child['full'])
         
         # Continue traversal
-        find_matches_and_relatives(node.get('children', []), keyword, kept_nodes, current_path)
+        find_matches_and_relatives(node.get('children', []), keywords, kept_nodes, current_path)
 
 def rebuild_tree(nodes, kept_nodes):
     """
@@ -142,7 +143,7 @@ def rebuild_tree(nodes, kept_nodes):
 def main():
     """Main function to read, parse, and write dependencies."""
     parser = argparse.ArgumentParser(description='Parse gradle dependencies and visualize them.')
-    parser.add_argument('--filter', type=str, help='A keyword to filter the dependency tree. Only nodes containing this keyword, their parents, and their children will be shown.')
+    parser.add_argument('--filter', type=str, help='A comma-separated list of keywords to filter the dependency tree.')
     args = parser.parse_args()
 
     try:
@@ -165,9 +166,10 @@ def main():
     root_nodes = parse_dependencies(lines)
 
     if args.filter:
-        print(f"Filtering dependencies with keyword: '{args.filter}'")
+        keywords = [k.strip() for k in args.filter.split(',')]
+        print(f"Filtering dependencies with keywords: {keywords}")
         kept_nodes = set()
-        find_matches_and_relatives(root_nodes, args.filter, kept_nodes, [])
+        find_matches_and_relatives(root_nodes, keywords, kept_nodes, [])
         root_nodes = rebuild_tree(root_nodes, kept_nodes)
 
     dependency_graph = {"root": root_nodes}
