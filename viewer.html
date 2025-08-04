@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3 Dependency Graph</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .node rect {
+            cursor: pointer;
+            stroke-width: 1.5px;
+        }
+
+        .node .node-text {
+            font-size: 10px;
+            font-weight: 500;
+            fill: #1e293b;
+            pointer-events: none;
+        }
+        
+        .node.node--internal rect {
+            fill: #dbeafe;
+            stroke: #3b82f6;
+        }
+
+        .node.node--leaf rect {
+            fill: #fef9c3; /* Yellow fill for leaf nodes */
+            stroke: #facc15; /* Yellow stroke for leaf nodes */
+        }
+
+        .node.node--searched rect {
+            stroke: #f59e0b !important;
+            stroke-width: 3px;
+        }
+
+        .node--searched .node-text {
+            font-weight: 700;
+            fill: #b45309;
+        }
+        
+        .node--faded {
+            opacity: 0.2;
+        }
+
+        .link {
+            fill: none;
+            stroke: #94a3b8;
+            stroke-opacity: 0.8;
+            stroke-width: 1.5px;
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+
+    <div class="fixed top-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-b border-slate-200 z-10">
+        <div class="max-w-xl mx-auto">
+            <h1 class="text-xl font-bold text-center text-slate-800 mb-2">Dependency Graph Visualizer</h1>
+            <div class="space-y-2">
+                <div>
+                    <textarea id="json-input" rows="4" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" placeholder="Paste your JSON here..."></textarea>
+                    <button id="render-btn" class="w-full mt-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">Render Graph</button>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="relative flex-grow">
+                        <input type="text" id="search-box" placeholder="Search for a module..."
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
+                        <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                        </svg>
+                    </div>
+                    <button id="toggle-all-btn" title="Toggle Expand/Collapse All" class="flex-shrink-0 p-2 rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        <svg id="expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v4m0 0h-4m4 0l-5-5" />
+                        </svg>
+                        <svg id="collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h4V4m0 0L4 8m0 0v4m0-4h4m11-4h-4v4m0 0L20 8m0 0v4m0-4h-4M4 16h4v4m0 0l-4-4m0 0v-4m0 4h4m11 4h-4v-4m0 0l4-4m0 0v-4m0 4h-4" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="graph-container" class="w-full h-screen pt-48"></div>
+
+    <script>
+        // The default JSON data
+        const defaultJsonData = {
+          "root": [
+            {
+              "module": "androidx.databinding:viewbinding", "version": "8.6.1", "resolution": "", "full": "androidx.databinding:viewbinding:8.6.1",
+              "children": [
+                { "module": "androidx.annotation:annotation", "version": "1.0.0", "resolution": "", "full": "androidx.annotation:annotation:1.0.0 -> 1.6.0", "children": [] }
+              ]
+            },
+            {
+              "module": "androidx.compose.ui:ui-tooling -> 1.4.3", "version": "", "resolution": "", "full": "androidx.compose.ui:ui-tooling -> 1.4.3",
+              "children": [
+                { "module": "androidx.annotation:annotation", "version": "1.1.0", "resolution": "*", "full": "androidx.annotation:annotation:1.1.0 -> 1.6.0 (*)", "children": [] },
+                { "module": "androidx.compose.runtime:runtime", "version": "1.2.1", "resolution": "", "full": "androidx.compose.runtime:runtime:1.2.1 -> 1.4.3", "children": [] }
+              ]
+            },
+            {
+              "module": "androidx.core:core-ktx", "version": "1.13.1", "resolution": "", "full": "androidx.core:core-ktx:1.13.1",
+              "children": [
+                { "module": "androidx.annotation:annotation", "version": "1.1.0", "resolution": "", "full": "androidx.annotation:annotation:1.1.0 -> 1.6.0", "children": [] },
+                { "module": "org.jetbrains.kotlin:kotlin-stdlib", "version": "1.8.22", "resolution": "", "full": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22 -> 1.9.22", "children": [] }
+              ]
+            },
+            {
+              "module": "androidx.appcompat:appcompat", "version": "1.7.0", "resolution": "", "full": "androidx.appcompat:appcompat:1.7.0",
+              "children": [
+                { "module": "androidx.core:core", "version": "1.13.1", "resolution": "", "full": "androidx.core:core:1.13.1", "children": [
+                    { "module": "androidx.lifecycle:lifecycle-runtime-very-long-name-for-testing-ellipsis", "version": "2.6.1", "resolution": "", "full": "androidx.lifecycle:lifecycle-runtime:2.6.1 -> 2.8.3", "children": [] }
+                ] },
+                { "module": "androidx.fragment:fragment", "version": "1.5.7", "resolution": "", "full": "androidx.fragment:fragment:1.5.7 -> 1.8.0", "children": [] }
+              ]
+            }
+          ]
+        };
+        
+        const jsonInput = document.getElementById('json-input');
+        jsonInput.value = JSON.stringify(defaultJsonData, null, 2);
+
+        let root; 
+        let gNode, gLink, svg;
+        let isTreeExpanded = false;
+        let nodeIdCounter = 0;
+
+        function renderGraph(jsonData) {
+            const container = document.getElementById('graph-container');
+            container.innerHTML = ''; 
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const data = {
+                module: "Root Dependencies",
+                children: jsonData.root
+            };
+            
+            root = d3.hierarchy(data);
+            
+            svg = d3.create("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("viewBox", [-width / 2, -height / 2, width, height]);
+
+            gLink = svg.append("g")
+                .attr("class", "links")
+                .attr("fill", "none")
+                .attr("stroke", "#94a3b8")
+                .attr("stroke-opacity", 0.8)
+                .attr("stroke-width", 1.5);
+
+            gNode = svg.append("g")
+                .attr("class", "nodes")
+                .attr("cursor", "pointer")
+                .attr("pointer-events", "all");
+
+            root.x0 = 0;
+            root.y0 = 0;
+            
+            root.children.forEach(collapse);
+            update(root);
+            
+            container.append(svg.node());
+        
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 5])
+                .on('zoom', (event) => {
+                    const {transform} = event;
+                    gNode.attr('transform', transform);
+                    gLink.attr('transform', transform);
+                    
+                    // Hide text when zoomed out for performance
+                    const k = transform.k;
+                    gNode.selectAll('text').attr('display', k > 0.4 ? 'block' : 'none');
+                });
+            
+            svg.call(zoom);
+        }
+
+        // --- Core Functions ---
+        function collapse(d) {
+            if (d.children) {
+                d._children = d.children;
+                d._children.forEach(collapse);
+                d.children = null;
+            }
+        }
+
+        function expand(d) {
+            if (d._children) {
+                d.children = d._children;
+                d._children = null;
+            }
+            if(d.children) {
+                d.children.forEach(expand);
+            }
+        }
+        
+        function toggleChildren(event, d) {
+            if (d.children) {
+                d._children = d.children;
+                d.children = null;
+            } else {
+                d.children = d._children;
+                d._children = null;
+            }
+            update(d);
+        }
+
+        function wrapText(textSelection) {
+            const nodeWidth = 180;
+            textSelection.each(function() {
+                const text = d3.select(this);
+                const content = text.text();
+                const padding = 24;
+                const maxWidth = nodeWidth - padding;
+                let textLength = text.node().getBBox().width;
+                
+                if (textLength <= maxWidth) return;
+
+                let truncatedContent = content;
+                while (textLength > maxWidth && truncatedContent.length > 0) {
+                    truncatedContent = truncatedContent.slice(0, -1);
+                    text.text(truncatedContent + '...');
+                    textLength = text.node().getBBox().width;
+                }
+            });
+        }
+        
+        function formatTooltip(data) {
+            if (!data || data.module === 'Root Dependencies') return '';
+            const dataToShow = { ...data };
+            delete dataToShow.children;
+            return Object.entries(dataToShow)
+                .map(([key, value]) => `${key}: ${value || 'N/A'}`)
+                .join('\n');
+        }
+
+        function getNodeLabel(d) {
+            if (d.data.module === 'Root Dependencies') return d.data.module;
+            return d.data.version ? `${d.data.module}:${d.data.version}` : d.data.module;
+        }
+
+        function update(source) {
+            const nodeWidth = 180;
+            const dy = 220;
+            const duration = 250;
+            const tree = d3.tree().nodeSize([25, dy]);
+            
+            tree(root);
+            
+            const nodes = root.descendants().reverse();
+            const links = root.links();
+            
+            const node = gNode.selectAll("g.node")
+                .data(nodes, d => d.id || (d.id = ++nodeIdCounter));
+
+            const nodeEnter = node.enter().append("g")
+                .attr("class", "node")
+                .attr("transform", d => `translate(${source.y0},${source.x0})`)
+                .attr("fill-opacity", 0)
+                .attr("stroke-opacity", 0)
+                .on("click", toggleChildren);
+            
+            nodeEnter.append("title")
+                .text(d => formatTooltip(d.data));
+
+            nodeEnter.append("rect")
+                .attr("rx", 6)
+                .attr("ry", 6)
+                .attr("height", 20)
+                .attr("y", -10)
+                .attr("width", nodeWidth);
+
+            const textEnter = nodeEnter.append("text")
+                .attr("class", "node-text")
+                .attr("dy", "0.31em")
+                .attr("x", 12)
+                .text(getNodeLabel)
+                .call(wrapText);
+                
+            textEnter.clone(true).lower()
+                .attr("stroke-linejoin", "round")
+                .attr("stroke-width", 3)
+                .attr("stroke", "white");
+
+            const nodeUpdate = node.merge(nodeEnter);
+            
+            nodeUpdate.select("title").text(d => formatTooltip(d.data));
+            
+            nodeUpdate.transition()
+                .duration(duration)
+                .attr("transform", d => `translate(${d.y},${d.x})`)
+                .attr("fill-opacity", 1)
+                .attr("stroke-opacity", 1);
+                
+            nodeUpdate
+                .attr("class", d => `node ${d.height === 0 ? 'node--leaf' : 'node--internal'}`);
+
+            const nodeExit = node.exit().transition()
+                .duration(duration)
+                .remove()
+                .attr("transform", d => `translate(${source.y},${source.x})`)
+                .attr("fill-opacity", 0)
+                .attr("stroke-opacity", 0);
+
+            const link = gLink.selectAll("path")
+                .data(links, d => d.target.id);
+
+            const linkEnter = link.enter().append("path")
+                .attr("class", "link")
+                .attr("d", d => {
+                    const o = {x: source.x0, y: source.y0 + nodeWidth};
+                    return d3.linkHorizontal()({source: o, target: o});
+                });
+
+            link.merge(linkEnter).transition()
+                .duration(duration)
+                .attr("d", d3.linkHorizontal()
+                    .x(d => d.y)
+                    .y(d => d.x))
+                .attr("transform", `translate(${nodeWidth},0)`);
+
+            link.exit().transition()
+                .duration(duration)
+                .remove()
+                .attr("d", d => {
+                    const o = {x: source.x, y: source.y + nodeWidth};
+                    return d3.linkHorizontal()({source: o, target: o});
+                });
+
+            root.eachBefore(d => {
+                d.x0 = d.x;
+                d.y0 = d.y;
+            });
+        }
+
+        // --- UI Event Listeners ---
+        document.getElementById('render-btn').addEventListener('click', () => {
+            const jsonInput = document.getElementById('json-input');
+            try {
+                const newData = JSON.parse(jsonInput.value);
+                nodeIdCounter = 0; // Reset counter for new data
+                renderGraph(newData);
+                jsonInput.classList.remove('border-red-500');
+                jsonInput.classList.add('border-slate-300');
+            } catch (error) {
+                console.error("Invalid JSON:", error);
+                jsonInput.classList.add('border-red-500');
+                jsonInput.classList.remove('border-slate-300');
+                alert("Invalid JSON format. Please check the console for details.");
+            }
+        });
+
+        document.getElementById('search-box').addEventListener('keyup', handleSearch);
+
+        const toggleBtn = document.getElementById('toggle-all-btn');
+        const expandIcon = document.getElementById('expand-icon');
+        const collapseIcon = document.getElementById('collapse-icon');
+        
+        toggleBtn.addEventListener('click', () => {
+            if (!root) return;
+            if (isTreeExpanded) {
+                root.children.forEach(collapse);
+                expandIcon.classList.remove('hidden');
+                collapseIcon.classList.add('hidden');
+            } else {
+                expand(root);
+                expandIcon.classList.add('hidden');
+                collapseIcon.classList.remove('hidden');
+            }
+            isTreeExpanded = !isTreeExpanded;
+            update(root);
+        });
+
+        function handleSearch(event) {
+            if (!root) return;
+            const searchTerm = event.target.value.toLowerCase().trim();
+            
+            gNode.selectAll('g.node').each(function(d) { d.linkNode = this; });
+
+            if (!searchTerm) {
+                gNode.selectAll("g.node")
+                    .classed("node--searched", false)
+                    .classed("node--faded", false);
+                return;
+            }
+
+            const allNodes = gNode.selectAll("g.node");
+            const matchedNodesData = [];
+
+            root.each(d => {
+                const label = getNodeLabel(d).toLowerCase();
+                if (label.includes(searchTerm)) {
+                    matchedNodesData.push(d);
+                }
+            });
+            
+            if (matchedNodesData.length > 0) {
+                allNodes.classed("node--faded", true).classed("node--searched", false);
+                
+                matchedNodesData.forEach(d => {
+                    let current = d;
+                    while (current) {
+                        if(current.parent && current.parent._children) {
+                           current.parent.children = current.parent._children;
+                           current.parent._children = null;
+                        }
+                        d3.select(current.linkNode).classed("node--faded", false);
+                        if (d === current) {
+                             d3.select(current.linkNode).classed("node--searched", true);
+                        }
+                        current = current.parent;
+                    }
+                });
+                update(root);
+
+            } else {
+                allNodes.classed("node--faded", true).classed("node--searched", false);
+            }
+        }
+        
+        // Initial render
+        renderGraph(defaultJsonData);
+        
+    </script>
+</body>
+</html>
