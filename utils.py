@@ -7,9 +7,10 @@ def parse_dependency_line(line):
     # We find the start of the dependency text itself.
     
     level = 0
+    indentation_width = 5  # A common indentation width for gradle
     for i, char in enumerate(line):
         if char not in ' |\+-':
-            level = i
+            level = i // indentation_width
             break
     
     # The actual dependency string starts after the tree markers
