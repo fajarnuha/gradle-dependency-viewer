@@ -1,7 +1,5 @@
 import json
 import re
-import argparse
-import copy
 
 def parse_dependency_line(line):
     """Parses a single line of gradle dependency output, extracting the node and its level."""
@@ -106,46 +104,10 @@ def parse_dependencies(lines):
 
     return root_nodes
 
-def find_matches_and_relatives(nodes, keywords, kept_nodes, ancestors):
-    """
-    Recursively traverses the tree to find nodes that match the keyword,
-    and adds them, their ancestors, and their direct children to the kept_nodes set.
-    """
-    for node in nodes:
-        # Path from root to current node
-        current_path = ancestors + [node]
-        # Check if any of the keywords are in the module name
-        if any(keyword.lower() in node.get('module', '').lower() for keyword in keywords):
-            # This node is a match. Keep it, all its ancestors, and all its direct children.
-            for n in current_path:
-                kept_nodes.add(n['full'])  # Use 'full' as a unique identifier
-            for child in node.get('children', []):
-                kept_nodes.add(child['full'])
-        
-        # Continue traversal
-        find_matches_and_relatives(node.get('children', []), keywords, kept_nodes, current_path)
 
-def rebuild_tree(nodes, kept_nodes):
-    """
-    Recursively rebuilds the tree, only including nodes whose 'full' identifier
-    is in the kept_nodes set.
-    """
-    new_tree = []
-    for node in nodes:
-        if node['full'] in kept_nodes:
-            # This node should be in the new tree.
-            new_node = copy.deepcopy(node)
-            # Recursively build the children list for the new node.
-            new_node['children'] = rebuild_tree(node.get('children', []), kept_nodes)
-            new_tree.append(new_node)
-    return new_tree
 
 def main():
     """Main function to read, parse, and write dependencies."""
-    parser = argparse.ArgumentParser(description='Parse gradle dependencies and visualize them.')
-    parser.add_argument('--filter', type=str, help='A comma-separated list of keywords to filter the dependency tree.')
-    args = parser.parse_args()
-
     try:
         with open('dependencies.txt', 'r', encoding='utf-8') as f:
             lines = f.readlines()
@@ -164,13 +126,6 @@ def main():
         return
 
     root_nodes = parse_dependencies(lines)
-
-    if args.filter:
-        keywords = [k.strip() for k in args.filter.split(',')]
-        print(f"Filtering dependencies with keywords: {keywords}")
-        kept_nodes = set()
-        find_matches_and_relatives(root_nodes, keywords, kept_nodes, [])
-        root_nodes = rebuild_tree(root_nodes, kept_nodes)
 
     dependency_graph = {"root": root_nodes}
 
