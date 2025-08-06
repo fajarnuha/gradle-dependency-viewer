@@ -143,7 +143,7 @@
             const height = container.clientHeight;
 
             const data = {
-                module: "root",
+                module: "Root Dependencies",
                 children: jsonData.root
             };
             
@@ -393,9 +393,8 @@
         function handleSearch(event) {
             if (!root) return;
             const searchTerm = event.target.value.toLowerCase().trim();
-            
-            gNode.selectAll('g.node').each(function(d) { d.linkNode = this; });
 
+            // Reset styles if search is cleared
             if (!searchTerm) {
                 gNode.selectAll("g.node")
                     .classed("node--searched", false)
@@ -403,37 +402,51 @@
                 return;
             }
 
-            const allNodes = gNode.selectAll("g.node");
-            const matchedNodesData = [];
-
+            const matchedNodes = [];
             root.each(d => {
                 const label = getNodeLabel(d).toLowerCase();
                 if (label.includes(searchTerm)) {
-                    matchedNodesData.push(d);
+                    matchedNodes.push(d);
                 }
             });
-            
-            if (matchedNodesData.length > 0) {
-                allNodes.classed("node--faded", true).classed("node--searched", false);
-                
-                matchedNodesData.forEach(d => {
+
+            if (matchedNodes.length > 0) {
+                // First, expand all ancestors of matched nodes
+                matchedNodes.forEach(d => {
                     let current = d;
-                    while (current) {
-                        if(current.parent && current.parent._children) {
-                           current.parent.children = current.parent._children;
-                           current.parent._children = null;
-                        }
-                        d3.select(current.linkNode).classed("node--faded", false);
-                        if (d === current) {
-                             d3.select(current.linkNode).classed("node--searched", true);
+                    while (current.parent) {
+                        if (current.parent._children) {
+                            current.parent.children = current.parent._children;
+                            current.parent._children = null;
                         }
                         current = current.parent;
                     }
                 });
+                
+                // After expanding, update the tree to reflect the changes
                 update(root);
 
+                // Then, apply styling to all nodes
+                gNode.selectAll('g.node').each(function(d) { d.linkNode = this; });
+                gNode.selectAll("g.node")
+                    .classed("node--faded", true)
+                    .classed("node--searched", false);
+
+                matchedNodes.forEach(d => {
+                    let current = d;
+                    while (current) {
+                        d3.select(current.linkNode).classed("node--faded", false);
+                        if (matchedNodes.includes(current)) {
+                            d3.select(current.linkNode).classed("node--searched", true);
+                        }
+                        current = current.parent;
+                    }
+                });
+
             } else {
-                allNodes.classed("node--faded", true).classed("node--searched", false);
+                gNode.selectAll("g.node")
+                    .classed("node--faded", true)
+                    .classed("node--searched", false);
             }
         }
         
