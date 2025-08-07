@@ -249,8 +249,11 @@
         }
 
         function getNodeLabel(d) {
-            if (d.data.module === 'Root Dependencies') return d.data.module;
-            return d.data.version ? `${d.data.module}:${d.data.version}` : d.data.module;
+            if (d.data.module === 'Root Dependencies' || d.data.module.startsWith('project')) return d.data.module;
+            
+            const moduleParts = d.data.module.split(':');
+            
+            return d.data.version ? `${moduleParts[1]}:${d.data.version}` : moduleParts;
         }
 
         function update(source) {
