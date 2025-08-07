@@ -1,4 +1,6 @@
 import json
+import argparse
+import os
 from utils import parse_dependency_line
 
 
@@ -44,31 +46,41 @@ def parse_dependencies(lines):
 
 def main():
     """Main function to read, parse, and write dependencies."""
+    parser = argparse.ArgumentParser(description='Parse Gradle dependency tree from text file')
+    parser.add_argument('file_path', help='Path to the input file (txt or no extension)')
+    args = parser.parse_args()
+    
+    input_path = args.file_path
+    
+    # Determine output path: same path and filename with .json suffix
+    base_path = os.path.splitext(input_path)[0]
+    output_path = base_path + '.json'
+    
     try:
-        with open('dependencies.txt', 'r', encoding='utf-8') as f:
+        with open(input_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
     except UnicodeDecodeError:
         try:
-            with open('dependencies.txt', 'r', encoding='utf-16') as f:
+            with open(input_path, 'r', encoding='utf-16') as f:
                 lines = f.readlines()
         except Exception as e:
-            print(f"Error reading dependencies.txt with utf-16: {e}")
+            print(f"Error reading {input_path} with utf-16: {e}")
             return
     except FileNotFoundError:
-        print("Error: dependencies.txt not found.")
+        print(f"Error: {input_path} not found.")
         return
     except Exception as e:
-        print(f"Error reading dependencies.txt: {e}")
+        print(f"Error reading {input_path}: {e}")
         return
 
     root_nodes = parse_dependencies(lines)
 
     dependency_graph = {"root": root_nodes}
 
-    with open('dependencies.json', 'w', encoding='utf-8') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(dependency_graph, f, indent=2)
 
-    print("Successfully parsed dependencies.txt and created dependencies.json")
+    print(f"Successfully parsed {input_path} and created {output_path}")
 
 if __name__ == "__main__":
     main()
