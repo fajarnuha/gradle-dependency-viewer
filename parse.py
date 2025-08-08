@@ -14,7 +14,7 @@ def parse_dependencies(lines):
     parsing = False
     for line in lines:
         line = line.rstrip()
-        if 'compileClasspath'.lower() in line.lower():
+        if 'compileclasspath' in line.lower() or 'runtimeclasspath' in line.lower():
             parsing = True
             continue
 
