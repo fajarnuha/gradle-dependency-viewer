@@ -1,6 +1,7 @@
 import json
 import argparse
 import os
+import re
 from utils import parse_dependency_line
 
 
@@ -14,7 +15,7 @@ def parse_dependencies(lines):
     parsing = False
     for line in lines:
         line = line.rstrip()
-        if 'compileclasspath' in line.lower() or 'runtimeclasspath' in line.lower():
+        if re.match(r'^\w+(Runtime|Compile)Classpath', line):
             parsing = True
             continue
 

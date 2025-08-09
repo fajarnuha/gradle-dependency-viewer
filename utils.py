@@ -23,8 +23,13 @@ def parse_dependency_line(line):
     module = ""
     version = ""
 
+    # Check if this is a project dependency
+    if full_dependency.startswith('project '):
+        # Remove any asterisk (*) from project dependencies
+        module = re.sub(r'\s*\(\*\)\s*$', '', full_dependency)
+        version = ""
     # Check for version change '->'
-    if ' -> ' in full_dependency:
+    elif ' -> ' in full_dependency:
         parts = full_dependency.split(' -> ')
         module_part = parts[0]
         version_part = parts[1]
