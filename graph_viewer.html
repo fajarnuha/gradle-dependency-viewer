@@ -511,6 +511,52 @@
                     document.getElementById('node-resolution').textContent = d.resolution || 'N/A';
                     document.getElementById('node-full').textContent = d.full;
                     nodeInfo.style.display = 'block';
+                })
+                .on('contextmenu', function(event, d) {
+                    event.preventDefault(); // Prevent default context menu
+                    
+                    // Remove node from data
+                    const nodeIndex = data.nodes.findIndex(n => n.id === d.id);
+                    if (nodeIndex !== -1) {
+                        data.nodes.splice(nodeIndex, 1);
+                    }
+                    
+                    // Remove all edges connected to this node
+                    data.edges = data.edges.filter(edge => {
+                        const sourceId = edge.source.id || edge.source;
+                        const targetId = edge.target.id || edge.target;
+                        return sourceId !== d.id && targetId !== d.id;
+                    });
+                    
+                    // Update metadata
+                    data.metadata.total_nodes = data.nodes.length;
+                    data.metadata.total_edges = data.edges.length;
+                    
+                    // Update stats display
+                    document.getElementById('total-nodes').textContent = data.nodes.length;
+                    document.getElementById('total-edges').textContent = data.edges.length;
+                    document.getElementById('visible-nodes').textContent = data.nodes.length;
+                    
+                    // Update the JSON input textarea to reflect changes
+                    // Create a clean copy without x,y coordinates for performance
+                    const cleanData = {
+                        nodes: data.nodes.map(node => ({
+                            id: node.id,
+                            module: node.module,
+                            version: node.version,
+                            resolution: node.resolution,
+                            full: node.full
+                        })),
+                        edges: data.edges.map(edge => ({
+                            source: edge.source.id || edge.source,
+                            target: edge.target.id || edge.target
+                        })),
+                        metadata: data.metadata
+                    };
+                    document.getElementById('json-input').value = JSON.stringify(cleanData, null, 2);
+                    
+                    // Recreate the visualization with updated data
+                    createVisualization(data);
                 });
             
             // Update positions on simulation tick
