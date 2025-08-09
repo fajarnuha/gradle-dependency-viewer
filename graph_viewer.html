@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dependency Graph Viewer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+
+        h1 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        input[type="text"], input[type="range"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        textarea {
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+            min-height: 120px;
+        }
+
+        input[type="range"] {
+            padding: 0;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .node-info {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .node-info h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .node-info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .legend {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .legend-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        #graph {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #graph:active {
+            cursor: grabbing;
+        }
+
+        .node {
+            stroke: #fff;
+            stroke-width: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            stroke-width: 3px;
+            filter: brightness(1.2);
+        }
+
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            stroke-width: 1px;
+        }
+
+        .link.highlighted {
+            stroke: #ff6b6b;
+            stroke-opacity: 0.8;
+            stroke-width: 2px;
+        }
+
+        .node.highlighted {
+            stroke: #ff6b6b;
+            stroke-width: 4px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 300px;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Dependency Graph</h1>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Total Nodes:</span>
+                    <span class="stat-value" id="total-nodes">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Edges:</span>
+                    <span class="stat-value" id="total-edges">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Visible Nodes:</span>
+                    <span class="stat-value" id="visible-nodes">-</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="json-input">JSON Graph Data:</label>
+                    <textarea id="json-input" rows="8" placeholder="Paste your graph JSON here..."></textarea>
+                    <button id="load-graph" style="margin-top: 10px; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Load Graph</button>
+                </div>
+                
+                <div class="control-group">
+                    <label for="search">Search Dependencies:</label>
+                    <input type="text" id="search" placeholder="Type to filter nodes...">
+                </div>
+                
+                <div class="control-group">
+                    <label for="node-size">Node Size: <span id="node-size-value">5</span></label>
+                    <input type="range" id="node-size" min="2" max="15" value="5">
+                </div>
+                
+                <div class="control-group">
+                    <label for="link-distance">Link Distance: <span id="link-distance-value">50</span></label>
+                    <input type="range" id="link-distance" min="20" max="200" value="50">
+                </div>
+            </div>
+
+            <div class="legend">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;">Legend</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #000000;"></div>
+                    <span class="legend-label">Root Node</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4CAF50;"></div>
+                    <span class="legend-label">Project Dependencies</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2196F3;"></div>
+                    <span class="legend-label">External Dependencies</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FF9800;"></div>
+                    <span class="legend-label">Android/Google</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9C27B0;"></div>
+                    <span class="legend-label">Kotlin/JetBrains</span>
+                </div>
+            </div>
+
+            <div class="node-info" id="node-info">
+                <h3 id="node-title">Node Information</h3>
+                <p><strong>Module:</strong> <span id="node-module"></span></p>
+                <p><strong>Version:</strong> <span id="node-version"></span></p>
+                <p><strong>Resolution:</strong> <span id="node-resolution"></span></p>
+                <p><strong>Full:</strong> <span id="node-full"></span></p>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <svg id="graph"></svg>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip" style="display: none;"></div>
+
+    <script>
+        // Default dummy graph data
+        const defaultGraphData = {
+            "nodes": [
+                {"id": "project :app", "module": "project :app", "version": "", "resolution": "", "full": "project :app"},
+                {"id": "project :core", "module": "project :core", "version": "", "resolution": "", "full": "project :core"},
+                {"id": "androidx.core:core-ktx:1.10.1", "module": "androidx.core:core-ktx", "version": "1.10.1", "resolution": "", "full": "androidx.core:core-ktx:1.10.1"},
+                {"id": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22", "module": "org.jetbrains.kotlin:kotlin-stdlib", "version": "1.8.22", "resolution": "", "full": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"},
+                {"id": "com.google.android.material:material:1.9.0", "module": "com.google.android.material:material", "version": "1.9.0", "resolution": "", "full": "com.google.android.material:material:1.9.0"}
+            ],
+            "edges": [
+                {"source": "project :app", "target": "project :core"},
+                {"source": "project :app", "target": "androidx.core:core-ktx:1.10.1"},
+                {"source": "project :core", "target": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"},
+                {"source": "androidx.core:core-ktx:1.10.1", "target": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"},
+                {"source": "com.google.android.material:material:1.9.0", "target": "androidx.core:core-ktx:1.10.1"}
+            ],
+            "metadata": {"total_nodes": 5, "total_edges": 5}
+        };
+        
+        let currentVisualization = null;
+        
+        // Load and visualize the graph data
+        function loadGraphFromInput() {
+            const jsonInput = document.getElementById('json-input');
+            let data;
+            
+            try {
+                if (jsonInput.value.trim()) {
+                    data = JSON.parse(jsonInput.value);
+                } else {
+                    data = defaultGraphData;
+                }
+                
+                // Update stats
+                document.getElementById('total-nodes').textContent = data.nodes.length;
+                document.getElementById('total-edges').textContent = data.edges.length;
+                document.getElementById('visible-nodes').textContent = data.nodes.length;
+                
+                createVisualization(data);
+            } catch (error) {
+                console.error('Error parsing JSON:', error);
+                alert('Invalid JSON format. Please check your input and try again.');
+            }
+        }
+        
+        async function loadGraphFromFile() {
+            try {
+                const response = await fetch('dependencies_graph_optimized.json');
+                const data = await response.json();
+                
+                // Populate the text area with loaded data
+                document.getElementById('json-input').value = JSON.stringify(data, null, 2);
+                
+                // Update stats
+                document.getElementById('total-nodes').textContent = data.nodes.length;
+                document.getElementById('total-edges').textContent = data.edges.length;
+                document.getElementById('visible-nodes').textContent = data.nodes.length;
+                
+                createVisualization(data);
+            } catch (error) {
+                console.error('Error loading graph data from file:', error);
+                // Fall back to default data
+                document.getElementById('json-input').value = JSON.stringify(defaultGraphData, null, 2);
+                loadGraphFromInput();
+            }
+        }
+
+        function createVisualization(data) {
+            // Clear existing visualization
+            if (currentVisualization) {
+                d3.select('#graph').selectAll('*').remove();
+            }
+            
+            const svg = d3.select('#graph');
+            const container = svg.node().parentNode;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            svg.attr('width', width).attr('height', height);
+            
+            // Create zoom behavior
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+            
+            svg.call(zoom);
+            
+            // Define arrow marker
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '-0 -3 6 6')
+                .attr('refX', 5)
+                .attr('refY', 0)
+                .attr('orient', 'auto')
+                .attr('markerWidth', 5)
+                .attr('markerHeight', 5)
+                .attr('xoverflow', 'visible')
+                .append('svg:path')
+                .attr('d', 'M 0,-2 L 6 ,0 L 0,2')
+                .attr('fill', '#666')
+                .style('stroke', 'none');
+            
+            // Create main group for zooming
+            const g = svg.append('g');
+            
+            // Color scale for different types of dependencies
+            function getNodeColor(module) {
+                if (module === 'root') return '#000000'; // Black for root node
+                if (module.startsWith('project ')) return '#4CAF50'; // Green for projects
+                if (module.includes('android') || module.includes('google')) return '#FF9800'; // Orange for Android/Google
+                if (module.includes('kotlin') || module.includes('jetbrains')) return '#9C27B0'; // Purple for Kotlin/JetBrains
+                return '#2196F3'; // Blue for other external dependencies
+            }
+            
+            // Identify root nodes (nodes with 0 parents)
+            const parentCounts = new Map();
+            data.nodes.forEach(node => parentCounts.set(node.id, 0));
+            data.edges.forEach(edge => {
+                const targetId = edge.target.id || edge.target;
+                parentCounts.set(targetId, (parentCounts.get(targetId) || 0) + 1);
+            });
+            
+            // Set initial positions based on parent count priority
+            data.nodes.forEach(node => {
+                const parentCount = parentCounts.get(node.id) || 0;
+                const isRoot = parentCount === 0 || node.module === 'root';
+                
+                // Calculate Y position based on parent count (fewer parents = higher position)
+                let yPosition;
+                if (isRoot) {
+                    yPosition = height * 0.05; // Root at very top
+                } else {
+                    // Normalize parent count to a position between 0.1 and 0.9
+                    const maxParents = Math.max(...Array.from(parentCounts.values()));
+                    const normalizedParentCount = parentCount / maxParents;
+                    yPosition = height * (0.1 + normalizedParentCount * 0.8);
+                }
+                
+                node.x = Math.random() * width;
+                node.y = yPosition + (Math.random() - 0.5) * 50; // Add small random offset
+                node.fx = null; // Allow movement
+                node.fy = null; // Allow movement
+            });
+            
+            // Create force simulation
+            const simulation = d3.forceSimulation(data.nodes)
+                .force('link', d3.forceLink(data.edges).id(d => d.id).distance(50))
+                .force('charge', d3.forceManyBody().strength(-100))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(10))
+                .force('y', d3.forceY().y(d => {
+                    const parentCount = parentCounts.get(d.id) || 0;
+                    const isRoot = parentCount === 0 || d.module === 'root';
+                    
+                    if (isRoot) {
+                        return height * 0.05; // Root at very top
+                    } else {
+                        // Calculate target Y based on parent count
+                        const maxParents = Math.max(...Array.from(parentCounts.values()));
+                        const normalizedParentCount = parentCount / maxParents;
+                        return height * (0.1 + normalizedParentCount * 0.8);
+                    }
+                }).strength(0.3));
+            
+            // Create links
+            const link = g.append('g')
+                .selectAll('line')
+                .data(data.edges)
+                .enter().append('line')
+                .attr('class', 'link')
+                .attr('marker-end', 'url(#arrowhead)');
+            
+            // Create nodes
+            const node = g.append('g')
+                .selectAll('circle')
+                .data(data.nodes)
+                .enter().append('circle')
+                .attr('class', 'node')
+                .attr('r', 5)
+                .attr('fill', d => getNodeColor(d.module))
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+            
+            // Add tooltips and interactions
+            const tooltip = d3.select('#tooltip');
+            
+            node
+                .on('mouseover', function(event, d) {
+                    // Highlight connected nodes and links
+                    const connectedNodes = new Set();
+                    connectedNodes.add(d.id);
+                    
+                    link.classed('highlighted', function(l) {
+                        if (l.source.id === d.id || l.target.id === d.id) {
+                            connectedNodes.add(l.source.id);
+                            connectedNodes.add(l.target.id);
+                            return true;
+                        }
+                        return false;
+                    });
+                    
+                    node.classed('highlighted', n => connectedNodes.has(n.id));
+                    
+                    // Show tooltip
+                    tooltip
+                        .style('display', 'block')
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY - 10) + 'px')
+                        .html(`
+                            <strong>${d.module}</strong><br>
+                            Version: ${d.version || 'N/A'}<br>
+                            ${d.resolution ? `Resolution: ${d.resolution}<br>` : ''}
+                            Full: ${d.full}
+                        `);
+                })
+                .on('mouseout', function() {
+                    link.classed('highlighted', false);
+                    node.classed('highlighted', false);
+                    tooltip.style('display', 'none');
+                })
+                .on('click', function(event, d) {
+                    // Show node info in sidebar
+                    const nodeInfo = document.getElementById('node-info');
+                    document.getElementById('node-module').textContent = d.module;
+                    document.getElementById('node-version').textContent = d.version || 'N/A';
+                    document.getElementById('node-resolution').textContent = d.resolution || 'N/A';
+                    document.getElementById('node-full').textContent = d.full;
+                    nodeInfo.style.display = 'block';
+                });
+            
+            // Update positions on simulation tick
+            simulation.on('tick', () => {
+                link.attr('x1', d => {
+                    const dx = d.target.x - d.source.x;
+                    const dy = d.target.y - d.source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const radius = parseFloat(node.filter(n => n.id === d.source.id).attr('r')) || 5;
+                    return d.source.x + (dx / distance) * radius;
+                })
+                .attr('y1', d => {
+                    const dx = d.target.x - d.source.x;
+                    const dy = d.target.y - d.source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const radius = parseFloat(node.filter(n => n.id === d.source.id).attr('r')) || 5;
+                    return d.source.y + (dy / distance) * radius;
+                })
+                .attr('x2', d => {
+                    const dx = d.source.x - d.target.x;
+                    const dy = d.source.y - d.target.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
+                    const arrowOffset = 5; // Account for smaller arrow marker size
+                    return d.target.x + (dx / distance) * (radius + arrowOffset);
+                })
+                .attr('y2', d => {
+                    const dx = d.source.x - d.target.x;
+                    const dy = d.source.y - d.target.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
+                    const arrowOffset = 5; // Account for smaller arrow marker size
+                    return d.target.y + (dy / distance) * (radius + arrowOffset);
+                });
+                
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+            });
+            
+            // Store current visualization reference
+            currentVisualization = { simulation, node, link, svg, g };
+            
+            // Drag functions
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+            
+            // Search functionality
+            const searchInput = document.getElementById('search');
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                let visibleCount = 0;
+                
+                node.style('opacity', function(d) {
+                    const isVisible = d.module.toLowerCase().includes(searchTerm);
+                    if (isVisible) visibleCount++;
+                    return isVisible ? 1 : 0.1;
+                });
+                
+                link.style('opacity', function(d) {
+                    const sourceVisible = d.source.module.toLowerCase().includes(searchTerm);
+                    const targetVisible = d.target.module.toLowerCase().includes(searchTerm);
+                    return (sourceVisible || targetVisible) ? 0.6 : 0.05;
+                });
+                
+                document.getElementById('visible-nodes').textContent = visibleCount;
+            });
+            
+            // Node size control
+            const nodeSizeSlider = document.getElementById('node-size');
+            const nodeSizeValue = document.getElementById('node-size-value');
+            nodeSizeSlider.addEventListener('input', function() {
+                const size = this.value;
+                nodeSizeValue.textContent = size;
+                node.attr('r', size);
+                simulation.force('collision').radius(parseInt(size) + 2);
+                simulation.alpha(0.3).restart();
+            });
+            
+            // Link distance control
+            const linkDistanceSlider = document.getElementById('link-distance');
+            const linkDistanceValue = document.getElementById('link-distance-value');
+            linkDistanceSlider.addEventListener('input', function() {
+                const distance = this.value;
+                linkDistanceValue.textContent = distance;
+                simulation.force('link').distance(parseInt(distance));
+                simulation.alpha(0.3).restart();
+            });
+        }
+        
+        // Initialize the visualization
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default JSON in textarea
+            document.getElementById('json-input').value = JSON.stringify(defaultGraphData, null, 2);
+            
+            // Add event listener for load button
+            document.getElementById('load-graph').addEventListener('click', loadGraphFromInput);
+            
+            // Try to load from file first, fall back to default
+            loadGraphFromFile();
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            const svg = d3.select('#graph');
+            const container = svg.node().parentNode;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            svg.attr('width', width).attr('height', height);
+        });
+    </script>
+</body>
+</html>
