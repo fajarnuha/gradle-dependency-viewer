@@ -199,6 +199,9 @@
     <div class="container">
         <div class="sidebar">
             <h1>Dependency Graph</h1>
+            <div id="no-data" style="display: none; margin: 10px 0; padding: 10px; border-radius: 6px; border: 1px solid #f5c2c7; background: #f8d7da; color: #842029; font-size: 13px;">
+                No data found. Please upload a TXT first. <a href="/" style="color: #842029; font-weight: 600;">Go back</a>.
+            </div>
             
             <div class="stats">
                 <div class="stat-item">
@@ -663,14 +666,26 @@
         
         // Initialize the visualization
         document.addEventListener('DOMContentLoaded', function() {
-            // Set default JSON in textarea
-            document.getElementById('json-input').value = JSON.stringify(defaultGraphData, null, 2);
-            
+            const jsonInput = document.getElementById('json-input');
+            const noDataBanner = document.getElementById('no-data');
+            const storedRaw = localStorage.getItem('last_result_json');
+
+            if (storedRaw) {
+                try {
+                    const parsed = JSON.parse(storedRaw);
+                    jsonInput.value = JSON.stringify(parsed, null, 2);
+                    loadGraphFromInput();
+                } catch (error) {
+                    console.error('Failed to parse stored JSON:', error);
+                    jsonInput.value = JSON.stringify(defaultGraphData, null, 2);
+                }
+            } else {
+                noDataBanner.style.display = 'block';
+                jsonInput.value = '';
+            }
+
             // Add event listener for load button
             document.getElementById('load-graph').addEventListener('click', loadGraphFromInput);
-            
-            // Try to load from file first, fall back to default
-            loadGraphFromFile();
         });
         
         // Handle window resize

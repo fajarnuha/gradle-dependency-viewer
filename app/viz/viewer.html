@@ -63,6 +63,9 @@
     <div class="fixed top-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-b border-slate-200 z-10">
         <div class="max-w-xl mx-auto">
             <h1 class="text-xl font-bold text-center text-slate-800 mb-2">Dependency Graph Visualizer</h1>
+            <div id="no-data" class="hidden mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                No data found. Please upload a TXT first. <a href="/" class="font-semibold underline">Go back</a>.
+            </div>
             <div class="space-y-2">
                 <div>
                     <textarea id="json-input" rows="4" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" placeholder="Paste your JSON here..."></textarea>
@@ -128,7 +131,21 @@
         };
         
         const jsonInput = document.getElementById('json-input');
-        jsonInput.value = JSON.stringify(defaultJsonData, null, 2);
+        const noDataBanner = document.getElementById('no-data');
+        let initialJsonData = defaultJsonData;
+
+        const storedRaw = localStorage.getItem('last_result_json');
+        if (storedRaw) {
+            try {
+                initialJsonData = JSON.parse(storedRaw);
+            } catch (error) {
+                console.error('Failed to parse stored JSON:', error);
+            }
+        } else {
+            noDataBanner.classList.remove('hidden');
+        }
+
+        jsonInput.value = JSON.stringify(initialJsonData, null, 2);
 
         let root; 
         let gNode, gLink, svg;
@@ -454,7 +471,9 @@
         }
         
         // Initial render
-        renderGraph(defaultJsonData);
+        if (storedRaw) {
+            renderGraph(initialJsonData);
+        }
         
     </script>
 </body>

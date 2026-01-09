@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gradle Dependency Viewer</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <h1>Gradle Dependency Viewer</h1>
+      <p>Upload your dependency TXT file to generate a JSON result and open the visualizers.</p>
+    </header>
+
+    <section class="card" id="upload-state">
+      <form id="upload-form" class="upload-form">
+        <div class="field">
+          <label for="txt-file">Upload TXT file</label>
+          <input id="txt-file" name="file" type="file" accept=".txt" />
+          <p class="hint">Only .txt files are supported.</p>
+        </div>
+        <div class="hint-box">
+          <h2>How to generate the TXT</h2>
+          <p>Run your Gradle dependency task and export the output to a TXT file, then upload it here.</p>
+        </div>
+        <p class="error" id="upload-error" role="alert" aria-live="polite"></p>
+        <button type="submit" class="primary-btn">Upload &amp; Process</button>
+      </form>
+    </section>
+
+    <section class="card hidden" id="processing-state" aria-live="polite">
+      <div class="processing">
+        <div class="spinner" aria-hidden="true"></div>
+        <div>
+          <h2>Processing your TXT…</h2>
+          <p>Please wait while we parse your file.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card hidden" id="ready-state">
+      <div class="ready-header">
+        <h2>JSON result is ready</h2>
+        <p>Review the conversion details and open the visualizations.</p>
+      </div>
+
+      <div class="results-grid">
+        <div class="panel">
+          <div class="panel-title">Uploaded TXT</div>
+          <pre id="txt-preview" class="code-block"></pre>
+        </div>
+        <div class="panel arrow-panel">
+          <div class="arrow">TXT → JSON</div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">JSON Result</div>
+          <pre id="json-preview" class="code-block"></pre>
+          <div class="viz-menu">
+            <h3>Visualization menu</h3>
+            <div class="viz-actions">
+              <button class="secondary-btn" data-viz="/viz/viewer.html">Open Viewer</button>
+              <button class="secondary-btn" data-viz="/viz/graph_viewer.html">Open Graph Viewer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
