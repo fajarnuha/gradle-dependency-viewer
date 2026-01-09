@@ -92,10 +92,25 @@ async def upload(file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=400, detail="Only .txt files are supported.")
 
     data = await file.read()
-    try:
-        txt_content = data.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise HTTPException(status_code=400, detail="TXT file must be UTF-8 encoded.") from exc
+    
+    # Try common encodings to be more robust (e.g. for Windows outputs)
+    txt_content = None
+    for encoding in ["utf-8-sig", "utf-16", "cp1252"]:
+        try:
+            txt_content = data.decode(encoding)
+            break
+        except (UnicodeDecodeError, LookupError):
+            continue
+
+    if txt_content is None:
+        # Final fallback to latin-1 which should always succeed but might have incorrect characters
+        try:
+            txt_content = data.decode("latin-1")
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="TXT file could not be decoded. Please ensure it is UTF-8 or UTF-16 encoded."
+            ) from exc
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as temp_file:
         temp_path = Path(temp_file.name)
