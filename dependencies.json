@@ -7086,8 +7086,8 @@
       ]
     },
     {
-      "module": "project :features",
-      "version": "category",
+      "module": "project :features:category",
+      "version": "",
       "resolution": "",
       "full": "project :features:category",
       "children": [
@@ -7108,8 +7108,8 @@
       ]
     },
     {
-      "module": "project :features",
-      "version": "onboarding",
+      "module": "project :features:onboarding",
+      "version": "",
       "resolution": "",
       "full": "project :features:onboarding",
       "children": [
@@ -7123,8 +7123,8 @@
       ]
     },
     {
-      "module": "project :libraries",
-      "version": "analytics",
+      "module": "project :libraries:analytics",
+      "version": "",
       "resolution": "",
       "full": "project :libraries:analytics",
       "children": [
@@ -7138,15 +7138,15 @@
       ]
     },
     {
-      "module": "project :libraries",
-      "version": "para",
+      "module": "project :libraries:para",
+      "version": "",
       "resolution": "",
       "full": "project :libraries:para",
       "children": []
     },
     {
-      "module": "project :libraries",
-      "version": "xcore",
+      "module": "project :libraries:xcore",
+      "version": "",
       "resolution": "",
       "full": "project :libraries:xcore",
       "children": [

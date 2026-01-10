@@ -16,18 +16,51 @@ from starlette.requests import Request
 APP_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = APP_ROOT.parent
 PARSE_SCRIPT = REPO_ROOT / "parse.py"
+CONVERT_SCRIPT = REPO_ROOT / "convert_to_graph.py"
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory=APP_ROOT / "static"), name="static")
-app.mount("/viz", StaticFiles(directory=APP_ROOT / "viz"), name="viz")
-
-templates = Jinja2Templates(directory=APP_ROOT / "templates")
+templates = Jinja2Templates(directory=[
+    str(APP_ROOT / "templates"),
+    str(APP_ROOT / "viz")
+])
 
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/viz/graph_viewer.html", response_class=HTMLResponse)
+async def graph_viewer(request: Request) -> HTMLResponse:
+    dep_json_path = REPO_ROOT / "dependencies.json"
+    graph_data = None
+    
+    if dep_json_path.exists():
+        try:
+            # Add REPO_ROOT to sys.path to import convert_to_graph
+            if str(REPO_ROOT) not in sys.path:
+                sys.path.append(str(REPO_ROOT))
+            
+            import convert_to_graph
+            
+            # Read the dependency data
+            with open(dep_json_path, 'r', encoding='utf-8') as f:
+                dependency_data = json.load(f)
+            
+            # Process directly in-process
+            graph_data = convert_to_graph.process_data(dependency_data)
+        except Exception as e:
+            print(f"Error converting graph in-process: {e}")
+
+    return templates.TemplateResponse("graph_viewer.html", {
+        "request": request,
+        "graph_data": graph_data
+    })
+
+
+app.mount("/static", StaticFiles(directory=APP_ROOT / "static"), name="static")
+app.mount("/viz", StaticFiles(directory=APP_ROOT / "viz"), name="viz")
 
 
 def _run_parser(input_path: Path) -> dict:
@@ -118,6 +151,12 @@ async def upload(file: UploadFile = File(...)) -> dict:
 
     try:
         parsed_json = _run_parser(temp_path)
+        
+        # Save to repo root so it can be used by other visualizers/scripts
+        dep_json_path = REPO_ROOT / "dependencies.json"
+        with open(dep_json_path, 'w', encoding='utf-8') as f:
+            json.dump(parsed_json, f, indent=2)
+            
     finally:
         temp_path.unlink(missing_ok=True)
 

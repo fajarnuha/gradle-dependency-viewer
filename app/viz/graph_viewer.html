@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,14 +56,16 @@
             color: #555;
         }
 
-        input[type="text"], input[type="range"], textarea {
+        input[type="text"],
+        input[type="range"],
+        textarea {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
         }
-        
+
         textarea {
             resize: vertical;
             font-family: 'Courier New', monospace;
@@ -195,14 +198,17 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="sidebar">
             <h1>Dependency Graph</h1>
-            <div id="no-data" style="display: none; margin: 10px 0; padding: 10px; border-radius: 6px; border: 1px solid #f5c2c7; background: #f8d7da; color: #842029; font-size: 13px;">
-                No data found. Please upload a TXT first. <a href="/" style="color: #842029; font-weight: 600;">Go back</a>.
+            <div id="no-data"
+                style="display: none; margin: 10px 0; padding: 10px; border-radius: 6px; border: 1px solid #f5c2c7; background: #f8d7da; color: #842029; font-size: 13px;">
+                No data found. Please upload a TXT first. <a href="/" style="color: #842029; font-weight: 600;">Go
+                    back</a>.
             </div>
-            
+
             <div class="stats">
                 <div class="stat-item">
                     <span class="stat-label">Total Nodes:</span>
@@ -222,19 +228,21 @@
                 <div class="control-group">
                     <label for="json-input">JSON Graph Data:</label>
                     <textarea id="json-input" rows="8" placeholder="Paste your graph JSON here..."></textarea>
-                    <button id="load-graph" style="margin-top: 10px; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Load Graph</button>
+                    <button id="load-graph"
+                        style="margin-top: 10px; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Load
+                        Graph</button>
                 </div>
-                
+
                 <div class="control-group">
                     <label for="search">Search Dependencies:</label>
                     <input type="text" id="search" placeholder="Type to filter nodes...">
                 </div>
-                
+
                 <div class="control-group">
                     <label for="node-size">Node Size: <span id="node-size-value">5</span></label>
                     <input type="range" id="node-size" min="2" max="15" value="5">
                 </div>
-                
+
                 <div class="control-group">
                     <label for="link-distance">Link Distance: <span id="link-distance-value">50</span></label>
                     <input type="range" id="link-distance" min="20" max="200" value="50">
@@ -273,7 +281,7 @@
                 <p><strong>Full:</strong> <span id="node-full"></span></p>
             </div>
         </div>
-        
+
         <div class="main-content">
             <svg id="graph"></svg>
         </div>
@@ -285,61 +293,61 @@
         // Default dummy graph data
         const defaultGraphData = {
             "nodes": [
-                {"id": "project :app", "module": "project :app", "version": "", "resolution": "", "full": "project :app"},
-                {"id": "project :core", "module": "project :core", "version": "", "resolution": "", "full": "project :core"},
-                {"id": "androidx.core:core-ktx:1.10.1", "module": "androidx.core:core-ktx", "version": "1.10.1", "resolution": "", "full": "androidx.core:core-ktx:1.10.1"},
-                {"id": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22", "module": "org.jetbrains.kotlin:kotlin-stdlib", "version": "1.8.22", "resolution": "", "full": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"},
-                {"id": "com.google.android.material:material:1.9.0", "module": "com.google.android.material:material", "version": "1.9.0", "resolution": "", "full": "com.google.android.material:material:1.9.0"}
+                { "id": "project :app", "module": "project :app", "version": "", "resolution": "", "full": "project :app" },
+                { "id": "project :core", "module": "project :core", "version": "", "resolution": "", "full": "project :core" },
+                { "id": "androidx.core:core-ktx:1.10.1", "module": "androidx.core:core-ktx", "version": "1.10.1", "resolution": "", "full": "androidx.core:core-ktx:1.10.1" },
+                { "id": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22", "module": "org.jetbrains.kotlin:kotlin-stdlib", "version": "1.8.22", "resolution": "", "full": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22" },
+                { "id": "com.google.android.material:material:1.9.0", "module": "com.google.android.material:material", "version": "1.9.0", "resolution": "", "full": "com.google.android.material:material:1.9.0" }
             ],
             "edges": [
-                {"source": "project :app", "target": "project :core"},
-                {"source": "project :app", "target": "androidx.core:core-ktx:1.10.1"},
-                {"source": "project :core", "target": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"},
-                {"source": "androidx.core:core-ktx:1.10.1", "target": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"},
-                {"source": "com.google.android.material:material:1.9.0", "target": "androidx.core:core-ktx:1.10.1"}
+                { "source": "project :app", "target": "project :core" },
+                { "source": "project :app", "target": "androidx.core:core-ktx:1.10.1" },
+                { "source": "project :core", "target": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22" },
+                { "source": "androidx.core:core-ktx:1.10.1", "target": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22" },
+                { "source": "com.google.android.material:material:1.9.0", "target": "androidx.core:core-ktx:1.10.1" }
             ],
-            "metadata": {"total_nodes": 5, "total_edges": 5}
+            "metadata": { "total_nodes": 5, "total_edges": 5 }
         };
-        
+
         let currentVisualization = null;
-        
+
         // Load and visualize the graph data
         function loadGraphFromInput() {
             const jsonInput = document.getElementById('json-input');
             let data;
-            
+
             try {
                 if (jsonInput.value.trim()) {
                     data = JSON.parse(jsonInput.value);
                 } else {
                     data = defaultGraphData;
                 }
-                
+
                 // Update stats
                 document.getElementById('total-nodes').textContent = data.nodes.length;
                 document.getElementById('total-edges').textContent = data.edges.length;
                 document.getElementById('visible-nodes').textContent = data.nodes.length;
-                
+
                 createVisualization(data);
             } catch (error) {
                 console.error('Error parsing JSON:', error);
                 alert('Invalid JSON format. Please check your input and try again.');
             }
         }
-        
+
         async function loadGraphFromFile() {
             try {
                 const response = await fetch('dependencies_graph_optimized.json');
                 const data = await response.json();
-                
+
                 // Populate the text area with loaded data
                 document.getElementById('json-input').value = JSON.stringify(data, null, 2);
-                
+
                 // Update stats
                 document.getElementById('total-nodes').textContent = data.nodes.length;
                 document.getElementById('total-edges').textContent = data.edges.length;
                 document.getElementById('visible-nodes').textContent = data.nodes.length;
-                
+
                 createVisualization(data);
             } catch (error) {
                 console.error('Error loading graph data from file:', error);
@@ -354,23 +362,23 @@
             if (currentVisualization) {
                 d3.select('#graph').selectAll('*').remove();
             }
-            
+
             const svg = d3.select('#graph');
             const container = svg.node().parentNode;
             const width = container.clientWidth;
             const height = container.clientHeight;
-            
+
             svg.attr('width', width).attr('height', height);
-            
+
             // Create zoom behavior
             const zoom = d3.zoom()
                 .scaleExtent([0.1, 10])
                 .on('zoom', (event) => {
                     g.attr('transform', event.transform);
                 });
-            
+
             svg.call(zoom);
-            
+
             // Define arrow marker
             svg.append('defs').append('marker')
                 .attr('id', 'arrowhead')
@@ -385,10 +393,10 @@
                 .attr('d', 'M 0,-2 L 6 ,0 L 0,2')
                 .attr('fill', '#666')
                 .style('stroke', 'none');
-            
+
             // Create main group for zooming
             const g = svg.append('g');
-            
+
             // Color scale for different types of dependencies
             function getNodeColor(module) {
                 if (module === 'root') return '#000000'; // Black for root node
@@ -397,7 +405,7 @@
                 if (module.includes('kotlin') || module.includes('jetbrains')) return '#9C27B0'; // Purple for Kotlin/JetBrains
                 return '#2196F3'; // Blue for other external dependencies
             }
-            
+
             // Identify root nodes (nodes with 0 parents)
             const parentCounts = new Map();
             data.nodes.forEach(node => parentCounts.set(node.id, 0));
@@ -405,12 +413,12 @@
                 const targetId = edge.target.id || edge.target;
                 parentCounts.set(targetId, (parentCounts.get(targetId) || 0) + 1);
             });
-            
+
             // Set initial positions based on parent count priority
             data.nodes.forEach(node => {
                 const parentCount = parentCounts.get(node.id) || 0;
                 const isRoot = parentCount === 0 || node.module === 'root';
-                
+
                 // Calculate Y position based on parent count (fewer parents = higher position)
                 let yPosition;
                 if (isRoot) {
@@ -421,13 +429,13 @@
                     const normalizedParentCount = parentCount / maxParents;
                     yPosition = height * (0.1 + normalizedParentCount * 0.8);
                 }
-                
+
                 node.x = Math.random() * width;
                 node.y = yPosition + (Math.random() - 0.5) * 50; // Add small random offset
                 node.fx = null; // Allow movement
                 node.fy = null; // Allow movement
             });
-            
+
             // Create force simulation
             const simulation = d3.forceSimulation(data.nodes)
                 .force('link', d3.forceLink(data.edges).id(d => d.id).distance(50))
@@ -437,7 +445,7 @@
                 .force('y', d3.forceY().y(d => {
                     const parentCount = parentCounts.get(d.id) || 0;
                     const isRoot = parentCount === 0 || d.module === 'root';
-                    
+
                     if (isRoot) {
                         return height * 0.05; // Root at very top
                     } else {
@@ -447,7 +455,7 @@
                         return height * (0.1 + normalizedParentCount * 0.8);
                     }
                 }).strength(0.3));
-            
+
             // Create links
             const link = g.append('g')
                 .selectAll('line')
@@ -455,7 +463,7 @@
                 .enter().append('line')
                 .attr('class', 'link')
                 .attr('marker-end', 'url(#arrowhead)');
-            
+
             // Create nodes
             const node = g.append('g')
                 .selectAll('circle')
@@ -468,17 +476,17 @@
                     .on('start', dragstarted)
                     .on('drag', dragged)
                     .on('end', dragended));
-            
+
             // Add tooltips and interactions
             const tooltip = d3.select('#tooltip');
-            
+
             node
-                .on('mouseover', function(event, d) {
+                .on('mouseover', function (event, d) {
                     // Highlight connected nodes and links
                     const connectedNodes = new Set();
                     connectedNodes.add(d.id);
-                    
-                    link.classed('highlighted', function(l) {
+
+                    link.classed('highlighted', function (l) {
                         if (l.source.id === d.id || l.target.id === d.id) {
                             connectedNodes.add(l.source.id);
                             connectedNodes.add(l.target.id);
@@ -486,9 +494,9 @@
                         }
                         return false;
                     });
-                    
+
                     node.classed('highlighted', n => connectedNodes.has(n.id));
-                    
+
                     // Show tooltip
                     tooltip
                         .style('display', 'block')
@@ -501,12 +509,12 @@
                             Full: ${d.full}
                         `);
                 })
-                .on('mouseout', function() {
+                .on('mouseout', function () {
                     link.classed('highlighted', false);
                     node.classed('highlighted', false);
                     tooltip.style('display', 'none');
                 })
-                .on('click', function(event, d) {
+                .on('click', function (event, d) {
                     // Show node info in sidebar
                     const nodeInfo = document.getElementById('node-info');
                     document.getElementById('node-module').textContent = d.module;
@@ -515,31 +523,31 @@
                     document.getElementById('node-full').textContent = d.full;
                     nodeInfo.style.display = 'block';
                 })
-                .on('contextmenu', function(event, d) {
+                .on('contextmenu', function (event, d) {
                     event.preventDefault(); // Prevent default context menu
-                    
+
                     // Remove node from data
                     const nodeIndex = data.nodes.findIndex(n => n.id === d.id);
                     if (nodeIndex !== -1) {
                         data.nodes.splice(nodeIndex, 1);
                     }
-                    
+
                     // Remove all edges connected to this node
                     data.edges = data.edges.filter(edge => {
                         const sourceId = edge.source.id || edge.source;
                         const targetId = edge.target.id || edge.target;
                         return sourceId !== d.id && targetId !== d.id;
                     });
-                    
+
                     // Update metadata
                     data.metadata.total_nodes = data.nodes.length;
                     data.metadata.total_edges = data.edges.length;
-                    
+
                     // Update stats display
                     document.getElementById('total-nodes').textContent = data.nodes.length;
                     document.getElementById('total-edges').textContent = data.edges.length;
                     document.getElementById('visible-nodes').textContent = data.nodes.length;
-                    
+
                     // Update the JSON input textarea to reflect changes
                     // Create a clean copy without x,y coordinates for performance
                     const cleanData = {
@@ -557,11 +565,11 @@
                         metadata: data.metadata
                     };
                     document.getElementById('json-input').value = JSON.stringify(cleanData, null, 2);
-                    
+
                     // Recreate the visualization with updated data
                     createVisualization(data);
                 });
-            
+
             // Update positions on simulation tick
             simulation.on('tick', () => {
                 link.attr('x1', d => {
@@ -571,125 +579,142 @@
                     const radius = parseFloat(node.filter(n => n.id === d.source.id).attr('r')) || 5;
                     return d.source.x + (dx / distance) * radius;
                 })
-                .attr('y1', d => {
-                    const dx = d.target.x - d.source.x;
-                    const dy = d.target.y - d.source.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const radius = parseFloat(node.filter(n => n.id === d.source.id).attr('r')) || 5;
-                    return d.source.y + (dy / distance) * radius;
-                })
-                .attr('x2', d => {
-                    const dx = d.source.x - d.target.x;
-                    const dy = d.source.y - d.target.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
-                    const arrowOffset = 5; // Account for smaller arrow marker size
-                    return d.target.x + (dx / distance) * (radius + arrowOffset);
-                })
-                .attr('y2', d => {
-                    const dx = d.source.x - d.target.x;
-                    const dy = d.source.y - d.target.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
-                    const arrowOffset = 5; // Account for smaller arrow marker size
-                    return d.target.y + (dy / distance) * (radius + arrowOffset);
-                });
-                
+                    .attr('y1', d => {
+                        const dx = d.target.x - d.source.x;
+                        const dy = d.target.y - d.source.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const radius = parseFloat(node.filter(n => n.id === d.source.id).attr('r')) || 5;
+                        return d.source.y + (dy / distance) * radius;
+                    })
+                    .attr('x2', d => {
+                        const dx = d.source.x - d.target.x;
+                        const dy = d.source.y - d.target.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
+                        const arrowOffset = 5; // Account for smaller arrow marker size
+                        return d.target.x + (dx / distance) * (radius + arrowOffset);
+                    })
+                    .attr('y2', d => {
+                        const dx = d.source.x - d.target.x;
+                        const dy = d.source.y - d.target.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
+                        const arrowOffset = 5; // Account for smaller arrow marker size
+                        return d.target.y + (dy / distance) * (radius + arrowOffset);
+                    });
+
                 node
                     .attr('cx', d => d.x)
                     .attr('cy', d => d.y);
             });
-            
+
             // Store current visualization reference
             currentVisualization = { simulation, node, link, svg, g };
-            
+
             // Drag functions
             function dragstarted(event, d) {
                 if (!event.active) simulation.alphaTarget(0.3).restart();
                 d.fx = d.x;
                 d.fy = d.y;
             }
-            
+
             function dragged(event, d) {
                 d.fx = event.x;
                 d.fy = event.y;
             }
-            
+
             function dragended(event, d) {
                 if (!event.active) simulation.alphaTarget(0);
                 d.fx = null;
                 d.fy = null;
             }
-            
+
             // Search functionality
             const searchInput = document.getElementById('search');
-            searchInput.addEventListener('input', function() {
+            searchInput.addEventListener('input', function () {
                 const searchTerm = this.value.toLowerCase();
                 let visibleCount = 0;
-                
-                node.style('opacity', function(d) {
+
+                node.style('opacity', function (d) {
                     const isVisible = d.module.toLowerCase().includes(searchTerm);
                     if (isVisible) visibleCount++;
                     return isVisible ? 1 : 0.1;
                 });
-                
-                link.style('opacity', function(d) {
+
+                link.style('opacity', function (d) {
                     const sourceVisible = d.source.module.toLowerCase().includes(searchTerm);
                     const targetVisible = d.target.module.toLowerCase().includes(searchTerm);
                     return (sourceVisible || targetVisible) ? 0.6 : 0.05;
                 });
-                
+
                 document.getElementById('visible-nodes').textContent = visibleCount;
             });
-            
+
             // Node size control
             const nodeSizeSlider = document.getElementById('node-size');
             const nodeSizeValue = document.getElementById('node-size-value');
-            nodeSizeSlider.addEventListener('input', function() {
+            nodeSizeSlider.addEventListener('input', function () {
                 const size = this.value;
                 nodeSizeValue.textContent = size;
                 node.attr('r', size);
                 simulation.force('collision').radius(parseInt(size) + 2);
                 simulation.alpha(0.3).restart();
             });
-            
+
             // Link distance control
             const linkDistanceSlider = document.getElementById('link-distance');
             const linkDistanceValue = document.getElementById('link-distance-value');
-            linkDistanceSlider.addEventListener('input', function() {
+            linkDistanceSlider.addEventListener('input', function () {
                 const distance = this.value;
                 linkDistanceValue.textContent = distance;
                 simulation.force('link').distance(parseInt(distance));
                 simulation.alpha(0.3).restart();
             });
         }
-        
+
         // Initialize the visualization
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const jsonInput = document.getElementById('json-input');
             const noDataBanner = document.getElementById('no-data');
-            const storedRaw = localStorage.getItem('last_result_json');
 
-            if (storedRaw) {
-                try {
-                    const parsed = JSON.parse(storedRaw);
-                    jsonInput.value = JSON.stringify(parsed, null, 2);
-                    loadGraphFromInput();
-                } catch (error) {
-                    console.error('Failed to parse stored JSON:', error);
-                    jsonInput.value = JSON.stringify(defaultGraphData, null, 2);
-                }
-            } else {
-                noDataBanner.style.display = 'block';
-                jsonInput.value = '';
+            // Priority 1: Injected data from server (pre-processed by convert_to_graph.py)
+            const serverGraphData = {{ graph_data | tojson | safe
+        }};
+        console.log("Injected graph data:", serverGraphData);
+
+        if (serverGraphData && serverGraphData.nodes && serverGraphData.nodes.length > 0) {
+            jsonInput.value = JSON.stringify(serverGraphData, null, 2);
+            loadGraphFromInput();
+            return;
+        } else if (serverGraphData) {
+            console.warn("Server returned empty graph data.");
+        }
+
+        // Priority 2: localStorage (fallback if opened directly or via static file)
+        const storedRaw = localStorage.getItem('last_result_json');
+        console.log("Local storage data found:", !!storedRaw);
+        if (storedRaw) {
+            try {
+                const parsed = JSON.parse(storedRaw);
+                // Note: This is tree data, not graph data. 
+                // We might need to handle this differently, but for now we follow old logic
+                jsonInput.value = JSON.stringify(parsed, null, 2);
+                loadGraphFromInput();
+            } catch (error) {
+                console.error('Failed to parse stored JSON:', error);
+                jsonInput.value = JSON.stringify(defaultGraphData, null, 2);
             }
+        } else {
+            noDataBanner.style.display = 'block';
+            jsonInput.value = '';
+        }
 
-            // Add event listener for load button
-            document.getElementById('load-graph').addEventListener('click', loadGraphFromInput);
+        // Add event listener for load button
+        document.getElementById('load-graph').addEventListener('click', loadGraphFromInput);
         });
-        
+
         // Handle window resize
-        window.addEventListener('resize', function() {
+        window.addEventListener('resize', function () {
             const svg = d3.select('#graph');
             const container = svg.node().parentNode;
             const width = container.clientWidth;
@@ -698,4 +723,5 @@
         });
     </script>
 </body>
+
 </html>

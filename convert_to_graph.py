@@ -166,6 +166,52 @@ def filter_graph_by_distance(graph_nodes, edges, max_distance):
     
     return filtered_nodes, filtered_edges
 
+def process_data(dependency_data, distance=None, exclude=None):
+    """
+    Process dependency tree data into graph format with optional filtering.
+    """
+    # Extract root nodes
+    root_nodes = dependency_data.get('root', [])
+    if not root_nodes:
+        return None
+    
+    # Build graph representation
+    graph_nodes, edges = traverse_tree(root_nodes)
+    
+    # Add the single root node and connect it to first-level dependencies
+    root_id = "root:"
+    graph_nodes[root_id] = {
+        'id': root_id,
+        'module': 'root',
+        'version': '',
+        'resolution': '',
+        'full': 'root',
+        'parents': set(),
+        'children': set()
+    }
+    
+    # Connect root to all first-level nodes
+    first_level_nodes = []
+    for node_id, node_data in graph_nodes.items():
+        if node_id != root_id and len(node_data['parents']) == 0:
+            first_level_nodes.append(node_id)
+    
+    for node_id in first_level_nodes:
+        graph_nodes[root_id]['children'].add(node_id)
+        graph_nodes[node_id]['parents'].add(root_id)
+        edges[root_id].add(node_id)
+    
+    # Apply exclude filtering
+    if exclude:
+        graph_nodes, edges = filter_graph_by_exclude(graph_nodes, edges, exclude)
+    
+    # Apply distance filtering
+    if distance is not None:
+        graph_nodes, edges = filter_graph_by_distance(graph_nodes, edges, distance)
+    
+    # Convert to final format
+    return convert_to_graph_format(graph_nodes, edges)
+
 def main():
     """Main function to convert dependency tree to graph representation."""
     parser = argparse.ArgumentParser(description='Convert dependency tree JSON to graph representation')
@@ -186,81 +232,17 @@ def main():
     try:
         with open(args.input_file, 'r', encoding='utf-8') as f:
             dependency_data = json.load(f)
-    except FileNotFoundError:
-        print(f"Error: {args.input_file} not found.")
-        return
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON: {e}")
-        return
     except Exception as e:
         print(f"Error reading {args.input_file}: {e}")
         return
     
-    # Extract root nodes
-    root_nodes = dependency_data.get('root', [])
-    if not root_nodes:
-        print("Warning: No root nodes found in the input file.")
-        return
-    
     print(f"Converting dependency tree to graph representation...")
     
-    # Build graph representation
-    graph_nodes, edges = traverse_tree(root_nodes)
+    graph_data = process_data(dependency_data, distance=args.distance, exclude=args.exclude)
     
-    # Add the single root node and connect it to first-level dependencies
-    root_id = "root:"
-    graph_nodes[root_id] = {
-        'id': root_id,
-        'module': 'root',
-        'version': '',
-        'resolution': '',
-        'full': 'root',
-        'parents': set(),
-        'children': set()
-    }
-    
-    # Connect root to all first-level nodes (nodes that currently have no parents)
-    first_level_nodes = []
-    for node_id, node_data in graph_nodes.items():
-        if node_id != root_id and len(node_data['parents']) == 0:
-            first_level_nodes.append(node_id)
-    
-    # Add edges from root to first-level nodes
-    for node_id in first_level_nodes:
-        graph_nodes[root_id]['children'].add(node_id)
-        graph_nodes[node_id]['parents'].add(root_id)
-        edges[root_id].add(node_id)
-    
-    # Apply exclude filtering if specified
-    if args.exclude:
-        print(f"Excluding nodes containing keyword: '{args.exclude}'...")
-        original_node_count = len(graph_nodes)
-        original_edge_count = sum(len(children) for children in edges.values())
-        
-        graph_nodes, edges = filter_graph_by_exclude(graph_nodes, edges, args.exclude)
-        
-        filtered_node_count = len(graph_nodes)
-        filtered_edge_count = sum(len(children) for children in edges.values())
-        
-        print(f"  - Nodes reduced from {original_node_count} to {filtered_node_count}")
-        print(f"  - Edges reduced from {original_edge_count} to {filtered_edge_count}")
-    
-    # Apply distance filtering if specified
-    if args.distance is not None:
-        print(f"Filtering graph to include nodes within {args.distance} steps from root...")
-        original_node_count = len(graph_nodes)
-        original_edge_count = sum(len(children) for children in edges.values())
-        
-        graph_nodes, edges = filter_graph_by_distance(graph_nodes, edges, args.distance)
-        
-        filtered_node_count = len(graph_nodes)
-        filtered_edge_count = sum(len(children) for children in edges.values())
-        
-        print(f"  - Nodes reduced from {original_node_count} to {filtered_node_count}")
-        print(f"  - Edges reduced from {original_edge_count} to {filtered_edge_count}")
-    
-    # Convert to final format
-    graph_data = convert_to_graph_format(graph_nodes, edges)
+    if not graph_data:
+        print("Warning: No graph data generated.")
+        return
     
     # Write output file
     try:
