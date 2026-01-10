@@ -14,9 +14,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
 APP_ROOT = Path(__file__).resolve().parent
-REPO_ROOT = APP_ROOT.parent
-PARSE_SCRIPT = REPO_ROOT / "parse.py"
-CONVERT_SCRIPT = REPO_ROOT / "convert_to_graph.py"
+PARSE_SCRIPT = APP_ROOT / "parse.py"
+CONVERT_SCRIPT = APP_ROOT / "convert_to_graph.py"
 DATA_DIR = APP_ROOT / "static" / "data"
 
 # Ensure data directory exists
@@ -47,11 +46,7 @@ async def graph_viewer(request: Request, file: str = None) -> HTMLResponse:
 
     if dep_json_path.exists():
         try:
-            # Add REPO_ROOT to sys.path to import convert_to_graph
-            if str(REPO_ROOT) not in sys.path:
-                sys.path.append(str(REPO_ROOT))
-            
-            import convert_to_graph
+            from . import convert_to_graph
             
             # Read the dependency data
             with open(dep_json_path, 'r', encoding='utf-8') as f:
