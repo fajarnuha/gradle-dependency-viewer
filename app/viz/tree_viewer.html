@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,15 +26,17 @@
             fill: #1e293b;
             pointer-events: none;
         }
-        
+
         .node.node--internal rect {
             fill: #dbeafe;
             stroke: #3b82f6;
         }
 
         .node.node--leaf rect {
-            fill: #fef9c3; /* Yellow fill for leaf nodes */
-            stroke: #facc15; /* Yellow stroke for leaf nodes */
+            fill: #fef9c3;
+            /* Yellow fill for leaf nodes */
+            stroke: #facc15;
+            /* Yellow stroke for leaf nodes */
         }
 
         .node.node--searched rect {
@@ -45,7 +48,7 @@
             font-weight: 700;
             fill: #b45309;
         }
-        
+
         .node--faded {
             opacity: 0.2;
         }
@@ -58,30 +61,47 @@
         }
     </style>
 </head>
+
 <body class="overflow-hidden">
 
     <div class="fixed top-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-b border-slate-200 z-10">
         <div class="max-w-xl mx-auto">
             <h1 class="text-xl font-bold text-center text-slate-800 mb-2">Dependency Graph Visualizer</h1>
+            <div id="no-data"
+                class="hidden mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                No data found. Please upload a TXT first. <a href="/" class="font-semibold underline">Go back</a>.
+            </div>
             <div class="space-y-2">
                 <div>
-                    <textarea id="json-input" rows="4" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" placeholder="Paste your JSON here..."></textarea>
-                    <button id="render-btn" class="w-full mt-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">Render Graph</button>
+                    <textarea id="json-input" rows="4"
+                        class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                        placeholder="Paste your JSON here..."></textarea>
+                    <button id="render-btn"
+                        class="w-full mt-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">Render
+                        Graph</button>
                 </div>
                 <div class="flex items-center space-x-2">
                     <div class="relative flex-grow">
                         <input type="text" id="search-box" placeholder="Search for a module..."
                             class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
-                        <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                        <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                         </svg>
                     </div>
-                    <button id="toggle-all-btn" title="Toggle Expand/Collapse All" class="flex-shrink-0 p-2 rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                        <svg id="expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v4m0 0h-4m4 0l-5-5" />
+                    <button id="toggle-all-btn" title="Toggle Expand/Collapse All"
+                        class="flex-shrink-0 p-2 rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        <svg id="expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v4m0 0h-4m4 0l-5-5" />
                         </svg>
-                        <svg id="collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h4V4m0 0L4 8m0 0v4m0-4h4m11-4h-4v4m0 0L20 8m0 0v4m0-4h-4M4 16h4v4m0 0l-4-4m0 0v-4m0 4h4m11 4h-4v-4m0 0l4-4m0 0v-4m0 4h-4" />
+                        <svg id="collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600 hidden"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M4 8h4V4m0 0L4 8m0 0v4m0-4h4m11-4h-4v4m0 0L20 8m0 0v4m0-4h-4M4 16h4v4m0 0l-4-4m0 0v-4m0 4h4m11 4h-4v-4m0 0l4-4m0 0v-4m0 4h-4" />
                         </svg>
                     </button>
                 </div>
@@ -94,50 +114,84 @@
     <script>
         // The default JSON data
         const defaultJsonData = {
-          "root": [
-            {
-              "module": "androidx.databinding:viewbinding", "version": "8.6.1", "resolution": "", "full": "androidx.databinding:viewbinding:8.6.1",
-              "children": [
-                { "module": "androidx.annotation:annotation", "version": "1.0.0", "resolution": "", "full": "androidx.annotation:annotation:1.0.0 -> 1.6.0", "children": [] }
-              ]
-            },
-            {
-              "module": "androidx.compose.ui:ui-tooling -> 1.4.3", "version": "", "resolution": "", "full": "androidx.compose.ui:ui-tooling -> 1.4.3",
-              "children": [
-                { "module": "androidx.annotation:annotation", "version": "1.1.0", "resolution": "*", "full": "androidx.annotation:annotation:1.1.0 -> 1.6.0 (*)", "children": [] },
-                { "module": "androidx.compose.runtime:runtime", "version": "1.2.1", "resolution": "", "full": "androidx.compose.runtime:runtime:1.2.1 -> 1.4.3", "children": [] }
-              ]
-            },
-            {
-              "module": "androidx.core:core-ktx", "version": "1.13.1", "resolution": "", "full": "androidx.core:core-ktx:1.13.1",
-              "children": [
-                { "module": "androidx.annotation:annotation", "version": "1.1.0", "resolution": "", "full": "androidx.annotation:annotation:1.1.0 -> 1.6.0", "children": [] },
-                { "module": "org.jetbrains.kotlin:kotlin-stdlib", "version": "1.8.22", "resolution": "", "full": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22 -> 1.9.22", "children": [] }
-              ]
-            },
-            {
-              "module": "androidx.appcompat:appcompat", "version": "1.7.0", "resolution": "", "full": "androidx.appcompat:appcompat:1.7.0",
-              "children": [
-                { "module": "androidx.core:core", "version": "1.13.1", "resolution": "", "full": "androidx.core:core:1.13.1", "children": [
-                    { "module": "androidx.lifecycle:lifecycle-runtime-very-long-name-for-testing-ellipsis", "version": "2.6.1", "resolution": "", "full": "androidx.lifecycle:lifecycle-runtime:2.6.1 -> 2.8.3", "children": [] }
-                ] },
-                { "module": "androidx.fragment:fragment", "version": "1.5.7", "resolution": "", "full": "androidx.fragment:fragment:1.5.7 -> 1.8.0", "children": [] }
-              ]
-            }
-          ]
+            "root": [
+                {
+                    "module": "androidx.databinding:viewbinding", "version": "8.6.1", "resolution": "", "full": "androidx.databinding:viewbinding:8.6.1",
+                    "children": [
+                        { "module": "androidx.annotation:annotation", "version": "1.0.0", "resolution": "", "full": "androidx.annotation:annotation:1.0.0 -> 1.6.0", "children": [] }
+                    ]
+                },
+                {
+                    "module": "androidx.compose.ui:ui-tooling -> 1.4.3", "version": "", "resolution": "", "full": "androidx.compose.ui:ui-tooling -> 1.4.3",
+                    "children": [
+                        { "module": "androidx.annotation:annotation", "version": "1.1.0", "resolution": "*", "full": "androidx.annotation:annotation:1.1.0 -> 1.6.0 (*)", "children": [] },
+                        { "module": "androidx.compose.runtime:runtime", "version": "1.2.1", "resolution": "", "full": "androidx.compose.runtime:runtime:1.2.1 -> 1.4.3", "children": [] }
+                    ]
+                },
+                {
+                    "module": "androidx.core:core-ktx", "version": "1.13.1", "resolution": "", "full": "androidx.core:core-ktx:1.13.1",
+                    "children": [
+                        { "module": "androidx.annotation:annotation", "version": "1.1.0", "resolution": "", "full": "androidx.annotation:annotation:1.1.0 -> 1.6.0", "children": [] },
+                        { "module": "org.jetbrains.kotlin:kotlin-stdlib", "version": "1.8.22", "resolution": "", "full": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22 -> 1.9.22", "children": [] }
+                    ]
+                },
+                {
+                    "module": "androidx.appcompat:appcompat", "version": "1.7.0", "resolution": "", "full": "androidx.appcompat:appcompat:1.7.0",
+                    "children": [
+                        {
+                            "module": "androidx.core:core", "version": "1.13.1", "resolution": "", "full": "androidx.core:core:1.13.1", "children": [
+                                { "module": "androidx.lifecycle:lifecycle-runtime-very-long-name-for-testing-ellipsis", "version": "2.6.1", "resolution": "", "full": "androidx.lifecycle:lifecycle-runtime:2.6.1 -> 2.8.3", "children": [] }
+                            ]
+                        },
+                        { "module": "androidx.fragment:fragment", "version": "1.5.7", "resolution": "", "full": "androidx.fragment:fragment:1.5.7 -> 1.8.0", "children": [] }
+                    ]
+                }
+            ]
         };
-        
-        const jsonInput = document.getElementById('json-input');
-        jsonInput.value = JSON.stringify(defaultJsonData, null, 2);
 
-        let root; 
+        const jsonInput = document.getElementById('json-input');
+        const noDataBanner = document.getElementById('no-data');
+        let initialJsonData = defaultJsonData;
+
+        async function loadInitialData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileName = urlParams.get('file');
+
+            if (fileName) {
+                try {
+                    const response = await fetch(`/static/data/${fileName}`);
+                    if (!response.ok) throw new Error('File not found');
+                    initialJsonData = await response.json();
+                } catch (error) {
+                    console.error('Failed to fetch file:', error);
+                    noDataBanner.classList.remove('hidden');
+                    noDataBanner.textContent = `Failed to load ${fileName}. Showing default data.`;
+                }
+            } else {
+                const storedRaw = localStorage.getItem('last_result_json');
+                if (storedRaw) {
+                    try {
+                        initialJsonData = JSON.parse(storedRaw);
+                    } catch (error) {
+                        console.error('Failed to parse stored JSON:', error);
+                    }
+                } else {
+                    noDataBanner.classList.remove('hidden');
+                }
+            }
+
+            jsonInput.value = JSON.stringify(initialJsonData, null, 2);
+            renderGraph(initialJsonData);
+        }
+
+        let root;
         let gNode, gLink, svg;
         let isTreeExpanded = false;
         let nodeIdCounter = 0;
 
         function renderGraph(jsonData) {
             const container = document.getElementById('graph-container');
-            container.innerHTML = ''; 
+            container.innerHTML = '';
 
             const width = container.clientWidth;
             const height = container.clientHeight;
@@ -146,9 +200,9 @@
                 module: "Root Dependencies",
                 children: jsonData.root
             };
-            
+
             root = d3.hierarchy(data);
-            
+
             svg = d3.create("svg")
                 .attr("width", width)
                 .attr("height", height)
@@ -168,24 +222,24 @@
 
             root.x0 = 0;
             root.y0 = 0;
-            
+
             root.children.forEach(collapse);
             update(root);
-            
+
             container.append(svg.node());
-        
+
             const zoom = d3.zoom()
                 .scaleExtent([0.1, 5])
                 .on('zoom', (event) => {
-                    const {transform} = event;
+                    const { transform } = event;
                     gNode.attr('transform', transform);
                     gLink.attr('transform', transform);
-                    
+
                     // Hide text when zoomed out for performance
                     const k = transform.k;
                     gNode.selectAll('text').attr('display', k > 0.4 ? 'block' : 'none');
                 });
-            
+
             svg.call(zoom);
         }
 
@@ -203,11 +257,11 @@
                 d.children = d._children;
                 d._children = null;
             }
-            if(d.children) {
+            if (d.children) {
                 d.children.forEach(expand);
             }
         }
-        
+
         function toggleChildren(event, d) {
             if (d.children) {
                 d._children = d.children;
@@ -221,13 +275,13 @@
 
         function wrapText(textSelection) {
             const nodeWidth = 180;
-            textSelection.each(function() {
+            textSelection.each(function () {
                 const text = d3.select(this);
                 const content = text.text();
                 const padding = 24;
                 const maxWidth = nodeWidth - padding;
                 let textLength = text.node().getBBox().width;
-                
+
                 if (textLength <= maxWidth) return;
 
                 let truncatedContent = content;
@@ -238,7 +292,7 @@
                 }
             });
         }
-        
+
         function formatTooltip(data) {
             if (!data || data.module === 'Root Dependencies') return '';
             const dataToShow = { ...data };
@@ -250,9 +304,9 @@
 
         function getNodeLabel(d) {
             if (d.data.module === 'Root Dependencies' || d.data.module.startsWith('project')) return d.data.module;
-            
+
             const moduleParts = d.data.module.split(':');
-            
+
             return d.data.version ? `${moduleParts[1]}:${d.data.version}` : moduleParts;
         }
 
@@ -261,12 +315,12 @@
             const dy = 220;
             const duration = 250;
             const tree = d3.tree().nodeSize([25, dy]);
-            
+
             tree(root);
-            
+
             const nodes = root.descendants().reverse();
             const links = root.links();
-            
+
             const node = gNode.selectAll("g.node")
                 .data(nodes, d => d.id || (d.id = ++nodeIdCounter));
 
@@ -276,7 +330,7 @@
                 .attr("fill-opacity", 0)
                 .attr("stroke-opacity", 0)
                 .on("click", toggleChildren);
-            
+
             nodeEnter.append("title")
                 .text(d => formatTooltip(d.data));
 
@@ -293,22 +347,22 @@
                 .attr("x", 12)
                 .text(getNodeLabel)
                 .call(wrapText);
-                
+
             textEnter.clone(true).lower()
                 .attr("stroke-linejoin", "round")
                 .attr("stroke-width", 3)
                 .attr("stroke", "white");
 
             const nodeUpdate = node.merge(nodeEnter);
-            
+
             nodeUpdate.select("title").text(d => formatTooltip(d.data));
-            
+
             nodeUpdate.transition()
                 .duration(duration)
                 .attr("transform", d => `translate(${d.y},${d.x})`)
                 .attr("fill-opacity", 1)
                 .attr("stroke-opacity", 1);
-                
+
             nodeUpdate
                 .attr("class", d => `node ${d.height === 0 ? 'node--leaf' : 'node--internal'}`);
 
@@ -329,24 +383,24 @@
             const linkEnter = link.enter().append("path")
                 .attr("class", "link")
                 .attr("d", d => {
-                    const startPoint = {x: source.x0, y: source.y0 + nodeWidth};
-                    return linkGenerator({source: startPoint, target: startPoint});
+                    const startPoint = { x: source.x0, y: source.y0 + nodeWidth };
+                    return linkGenerator({ source: startPoint, target: startPoint });
                 });
 
             link.merge(linkEnter).transition()
                 .duration(duration)
                 .attr("d", d => {
-                    const sourcePoint = {x: d.source.x, y: d.source.y + nodeWidth};
-                    const targetPoint = {x: d.target.x, y: d.target.y};
-                    return linkGenerator({source: sourcePoint, target: targetPoint});
+                    const sourcePoint = { x: d.source.x, y: d.source.y + nodeWidth };
+                    const targetPoint = { x: d.target.x, y: d.target.y };
+                    return linkGenerator({ source: sourcePoint, target: targetPoint });
                 });
 
             link.exit().transition()
                 .duration(duration)
                 .remove()
                 .attr("d", d => {
-                    const endPoint = {x: source.x, y: source.y + nodeWidth};
-                    return linkGenerator({source: endPoint, target: endPoint});
+                    const endPoint = { x: source.x, y: source.y + nodeWidth };
+                    return linkGenerator({ source: endPoint, target: endPoint });
                 });
 
             root.eachBefore(d => {
@@ -377,7 +431,7 @@
         const toggleBtn = document.getElementById('toggle-all-btn');
         const expandIcon = document.getElementById('expand-icon');
         const collapseIcon = document.getElementById('collapse-icon');
-        
+
         toggleBtn.addEventListener('click', () => {
             if (!root) return;
             if (isTreeExpanded) {
@@ -425,12 +479,12 @@
                         current = current.parent;
                     }
                 });
-                
+
                 // After expanding, update the tree to reflect the changes
                 update(root);
 
                 // Then, apply styling to all nodes
-                gNode.selectAll('g.node').each(function(d) { d.linkNode = this; });
+                gNode.selectAll('g.node').each(function (d) { d.linkNode = this; });
                 gNode.selectAll("g.node")
                     .classed("node--faded", true)
                     .classed("node--searched", false);
@@ -452,10 +506,11 @@
                     .classed("node--searched", false);
             }
         }
-        
+
         // Initial render
-        renderGraph(defaultJsonData);
-        
+        loadInitialData();
+
     </script>
 </body>
+
 </html>

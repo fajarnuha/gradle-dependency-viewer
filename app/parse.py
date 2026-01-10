@@ -57,21 +57,25 @@ def main():
     base_path = os.path.splitext(input_path)[0]
     output_path = base_path + '.json'
     
-    try:
-        with open(input_path, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-    except UnicodeDecodeError:
-        try:
-            with open(input_path, 'r', encoding='utf-16') as f:
-                lines = f.readlines()
-        except Exception as e:
-            print(f"Error reading {input_path} with utf-16: {e}")
-            return
-    except FileNotFoundError:
+    if not os.path.exists(input_path):
         print(f"Error: {input_path} not found.")
         return
-    except Exception as e:
-        print(f"Error reading {input_path}: {e}")
+
+    encodings = ["utf-8-sig", "utf-16", "cp1252", "latin-1"]
+    lines = None
+    for encoding in encodings:
+        try:
+            with open(input_path, 'r', encoding=encoding) as f:
+                lines = f.readlines()
+            break
+        except (UnicodeDecodeError, LookupError):
+            continue
+        except Exception as e:
+            print(f"Error reading {input_path} with {encoding}: {e}")
+            return
+
+    if lines is None:
+        print(f"Error: Could not decode {input_path} with common encodings.")
         return
 
     root_nodes = parse_dependencies(lines)

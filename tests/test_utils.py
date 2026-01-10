@@ -1,5 +1,5 @@
 import unittest
-from utils import parse_dependency_line
+from app.utils import parse_dependency_line
 
 class TestUtils(unittest.TestCase):
 
