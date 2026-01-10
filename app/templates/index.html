@@ -1,73 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gradle Dependency Viewer</title>
   <link rel="stylesheet" href="/static/app.css" />
 </head>
+
 <body>
   <main class="page">
     <header class="hero">
       <h1>Gradle Dependency Viewer</h1>
-      <p>Upload your dependency TXT file to generate a JSON result and open the visualizers.</p>
+      <p>Upload your dependency TXT file or choose from your past processed dependencies.</p>
     </header>
 
-    <section class="card" id="upload-state">
-      <form id="upload-form" class="upload-form">
-        <div class="field">
-          <label for="txt-file">Upload TXT file</label>
-          <input id="txt-file" name="file" type="file" accept=".txt" />
-          <p class="hint">Only .txt files are supported.</p>
-        </div>
-        <div class="hint-box">
-          <h2>How to generate the TXT</h2>
-          <p>Run your Gradle dependency task and export the output to a TXT file, then upload it here.</p>
-        </div>
-        <p class="error" id="upload-error" role="alert" aria-live="polite"></p>
-        <button type="submit" class="primary-btn">Upload &amp; Process</button>
-      </form>
-    </section>
+    <div class="main-content">
+      <aside class="sidebar">
+        <section class="card" id="upload-section">
+          <h2>Process New File</h2>
+          <form id="upload-form" class="upload-form">
+            <div class="field">
+              <label for="txt-file">Upload TXT file</label>
+              <input id="txt-file" name="file" type="file" accept=".txt" />
+            </div>
+            <button type="submit" class="primary-btn">Upload &amp; Process</button>
+            <p class="error" id="upload-error" role="alert" aria-live="polite"></p>
+          </form>
+        </section>
 
-    <section class="card hidden" id="processing-state" aria-live="polite">
-      <div class="processing">
-        <div class="spinner" aria-hidden="true"></div>
-        <div>
-          <h2>Processing your TXT…</h2>
-          <p>Please wait while we parse your file.</p>
-        </div>
-      </div>
-    </section>
+        <section class="card" id="history-section">
+          <h2>Past Dependencies</h2>
+          <ul id="file-list" class="file-list">
+            <!-- Populated by JavaScript -->
+            <li class="empty-list">No past files found.</li>
+          </ul>
+        </section>
+      </aside>
 
-    <section class="card hidden" id="ready-state">
-      <div class="ready-header">
-        <h2>JSON result is ready</h2>
-        <p>Review the conversion details and open the visualizations.</p>
-      </div>
-
-      <div class="results-grid">
-        <div class="panel">
-          <div class="panel-title">Uploaded TXT</div>
-          <pre id="txt-preview" class="code-block"></pre>
-        </div>
-        <div class="panel arrow-panel">
-          <div class="arrow">TXT → JSON</div>
-        </div>
-        <div class="panel">
-          <div class="panel-title">JSON Result</div>
-          <pre id="json-preview" class="code-block"></pre>
-          <div class="viz-menu">
-            <h3>Visualization menu</h3>
-            <div class="viz-actions">
-              <button class="secondary-btn" data-viz="/viz/viewer.html">Open Viewer</button>
-              <button class="secondary-btn" data-viz="/viz/graph_viewer.html">Open Graph Viewer</button>
+      <section class="content-area">
+        <section class="card hidden" id="processing-state" aria-live="polite">
+          <div class="processing">
+            <div class="spinner" aria-hidden="true"></div>
+            <div>
+              <h2>Processing your TXT…</h2>
+              <p>Please wait while we parse your file.</p>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
+        </section>
+
+        <section class="card" id="welcome-state">
+          <div class="welcome-box">
+            <h2>Get Started</h2>
+            <p>Upload a Gradle dependency output (TXT) to visualize it as a graph.</p>
+            <div class="hint-box">
+              <h3>How to generate the TXT</h3>
+              <p>Run your Gradle dependency task (e.g., <code>./gradlew app:dependencies</code>) and export the output
+                to a TXT file.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card hidden" id="ready-state">
+          <div class="ready-header">
+            <h2 id="current-file-name">JSON result is ready</h2>
+            <p>Review the conversion details and open the visualizations.</p>
+          </div>
+
+          <div class="results-grid">
+            <div class="panel" id="txt-panel">
+              <div class="panel-title">Uploaded TXT</div>
+              <pre id="txt-preview" class="code-block"></pre>
+            </div>
+            <div class="panel arrow-panel" id="arrow-panel">
+              <div class="arrow">TXT → JSON</div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">JSON Result</div>
+              <pre id="json-preview" class="code-block"></pre>
+              <div class="viz-menu">
+                <h3>Visualization menu</h3>
+                <div class="viz-actions">
+                  <button class="secondary-btn" id="open-graph-btn">Open Graph Viewer</button>
+                  <button class="secondary-btn" id="open-tree-btn">Open Tree Viewer</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
   </main>
 
   <script src="/static/app.js"></script>
 </body>
+
 </html>

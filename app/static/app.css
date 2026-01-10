@@ -144,6 +144,10 @@ input[type="file"] {
   align-items: stretch;
 }
 
+.results-grid.single-column {
+  grid-template-columns: 1fr;
+}
+
 .panel {
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -152,6 +156,107 @@ input[type="file"] {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Layout */
+.main-content {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.content-area {
+  min-width: 0;
+}
+
+/* File List */
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  margin-bottom: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.file-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(4px);
+}
+
+.file-item.active {
+  background-color: var(--primary);
+  color: white;
+}
+
+.file-item .file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.9rem;
+}
+
+.file-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #ff4444;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.delete-btn:hover {
+  opacity: 1;
+}
+
+.file-item.active .delete-btn {
+  color: white;
+}
+
+.empty-list {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: var(--space-md);
+}
+
+/* Welcome Box */
+.welcome-box {
+  text-align: center;
+  padding: var(--space-xl) var(--space-lg);
+}
+
+.welcome-box h2 {
+  font-size: 2rem;
+  margin-bottom: var(--space-md);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .panel-title {

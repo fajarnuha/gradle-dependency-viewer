@@ -17,6 +17,10 @@ APP_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = APP_ROOT.parent
 PARSE_SCRIPT = REPO_ROOT / "parse.py"
 CONVERT_SCRIPT = REPO_ROOT / "convert_to_graph.py"
+DATA_DIR = APP_ROOT / "static" / "data"
+
+# Ensure data directory exists
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI()
 
@@ -32,10 +36,15 @@ def index(request: Request) -> HTMLResponse:
 
 
 @app.get("/viz/graph_viewer.html", response_class=HTMLResponse)
-async def graph_viewer(request: Request) -> HTMLResponse:
-    dep_json_path = REPO_ROOT / "dependencies.json"
+async def graph_viewer(request: Request, file: str = None) -> HTMLResponse:
     graph_data = None
     
+    if file:
+        dep_json_path = DATA_DIR / file
+    else:
+        # Fallback for backward compatibility if needed, though we should prefer 'file' param
+        dep_json_path = REPO_ROOT / "dependencies.json"
+
     if dep_json_path.exists():
         try:
             # Add REPO_ROOT to sys.path to import convert_to_graph
@@ -55,7 +64,8 @@ async def graph_viewer(request: Request) -> HTMLResponse:
 
     return templates.TemplateResponse("graph_viewer.html", {
         "request": request,
-        "graph_data": graph_data
+        "graph_data": graph_data,
+        "file_name": file
     })
 
 
@@ -126,7 +136,7 @@ async def upload(file: UploadFile = File(...)) -> dict:
 
     data = await file.read()
     
-    # Try common encodings to be more robust (e.g. for Windows outputs)
+    # Try common encodings
     txt_content = None
     for encoding in ["utf-8-sig", "utf-16", "cp1252"]:
         try:
@@ -136,7 +146,6 @@ async def upload(file: UploadFile = File(...)) -> dict:
             continue
 
     if txt_content is None:
-        # Final fallback to latin-1 which should always succeed but might have incorrect characters
         try:
             txt_content = data.decode("latin-1")
         except Exception as exc:
@@ -152,16 +161,49 @@ async def upload(file: UploadFile = File(...)) -> dict:
     try:
         parsed_json = _run_parser(temp_path)
         
-        # Save to repo root so it can be used by other visualizers/scripts
-        dep_json_path = REPO_ROOT / "dependencies.json"
-        with open(dep_json_path, 'w', encoding='utf-8') as f:
+        # Save to static/data directory with the same name as txt file (but .json)
+        # Embed the original TXT content for persistence
+        parsed_json["raw_txt"] = txt_content
+        
+        json_filename = Path(file.filename).with_suffix(".json").name
+        dest_path = DATA_DIR / json_filename
+        
+        with open(dest_path, 'w', encoding='utf-8') as f:
             json.dump(parsed_json, f, indent=2)
             
     finally:
         temp_path.unlink(missing_ok=True)
 
     return {
-        "job_id": str(uuid.uuid4()),
+        "filename": json_filename,
         "txt": txt_content,
         "json": parsed_json,
     }
+
+
+@app.get("/api/files")
+async def list_files():
+    files = []
+    for f in DATA_DIR.glob("*.json"):
+        files.append({
+            "name": f.name,
+            "size": f.stat().st_size,
+            "modified": f.stat().st_mtime
+        })
+    # Sort by modification time (newest first)
+    files.sort(key=lambda x: x["modified"], reverse=True)
+    return files
+
+
+@app.delete("/api/files/{filename}")
+async def delete_file(filename: str):
+    file_path = DATA_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found.")
+    
+    # Security check: ensure it's just a filename and not a path
+    if Path(filename).name != filename:
+         raise HTTPException(status_code=400, detail="Invalid filename.")
+
+    file_path.unlink()
+    return {"message": f"File {filename} deleted."}
