@@ -1,66 +1,83 @@
 # Gradle Dependency Viewer
 
-A simple tool to visualize gradle dependencies.
+A powerful and intuitive tool to visualize Gradle dependencies as interactive graphs.
 
-## Usage
+## App Architecture
 
-1.  **Generate dependency tree:**
+The project is structured to separate the core logic from the web application interface:
 
-    ```bash
-    ./gradlew app:dependencies > dependencies.txt
-    ```
+- `app/`: The main application package.
+  - `main.py`: FastAPI application and API endpoints.
+  - `parse.py`: Core logic for parsing Gradle dependency output (`.txt`).
+  - `convert_to_graph.py`: Logic for transforming parsed data into graph formats.
+  - `utils.py`: Shared utility functions.
+  - `static/`: Static assets (JS, CSS, images).
+  - `templates/`: Jinja2 HTML templates.
+  - `viz/`: HTML-based visualization components.
+- `tests/`: Automated test suite for both CLI logic and API endpoints.
+- `.github/workflows/`: CI/CD pipeline configuration.
+- `Dockerfile`: Containerization configuration using `uv`.
 
-2.  **Parse the dependency file:**
+## Getting Started
 
-    ```bash
-    python parse.py
-    ```
+### Prerequisites
 
-    This will create a `dependencies.json` file.
+- Python 3.12 or higher
+- [uv](https://github.com/astral-sh/uv) (recommended for dependency management)
 
-3.  **Filter the dependencies (optional):**
+### Running the Web Application
 
-    ```bash
-    python filter.py --file dependencies.json --filter <your-keywords>
-    ```
+#### Using uv (Recommended)
 
-    Replace `<your-keywords>` with a comma-separated list of keywords to filter by (e.g., `spring,google`).
+To start the server in development mode:
 
-4.  **View the result as horizontal tree graph:**
+```bash
+uv run uvicorn app.main:app --reload
+```
 
-    Open `viewer.html` in your web browser to see the dependency graph as horizontal tree. (Requires the `.json` file from step 2).
-  
-5. **View the result as neural graph:**
+#### Using Docker
 
-    Open `graph_viewer.html` in your web browser to see the more flexible neural graph for larger dependencies. (Requires the `.json` file from step 2).
+Build and run the container:
 
-## Web Application
+```bash
+docker build -t gradle-dependency-viewer .
+docker run -p 8000:8000 gradle-dependency-viewer
+```
 
-For a more interactive experience, you can run the FastAPI web server:
+Access the UI at [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-1.  **Install dependencies:**
+## Usage Guide
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+### 1. Generate Dependency File
+Run the following command in your Gradle project root to generate a text file of your dependencies:
 
-2.  **Run the application (from the project root):**
+```bash
+./gradlew app:dependencies > dependencies.txt
+```
 
-    ```bash
-    fastapi dev app/main.py
-    ```
+### 2. Upload and Visualize
+1. Open the web app in your browser.
+2. Drag and drop or click to upload your `dependencies.txt`.
+3. The app will automatically parse the file and redirect you to the visualization.
 
-    *Note: If you don't have the `fastapi` CLI, you can use:*
-    ```bash
-    uvicorn app.main:app --reload
-    ```
+### 3. Navigation and Features
+- **File History**: The landing page shows a history of uploaded files. You can revisit any previous visualization or delete old files.
+- **Tree Viewer**: Provides a hierarchical view of dependencies, perfect for understanding the structure of your project.
+- **Graph Viewer**: Offers a flexible, interactive neural graph visualization. Great for identifying complex relationship webs and transitive dependencies.
+- **Search and Filter**: Both viewers support filtering to find specific artifacts or groups.
 
-    *To run specifically from the `app` directory:*
-    ```bash
-    cd app
-    uvicorn main:app --reload
-    ```
+## Development
 
-3.  **Access the UI:**
+### Running Tests
+To run the full test suite:
 
-    Go to [http://127.0.0.1:8000](http://127.0.0.1:8000). You can upload your `dependencies.txt` file here to visualize it without manual parsing.
+```bash
+uv run pytest
+```
+
+### Manual CLI Parsing (Optional)
+While the web app handles parsing automatically, you can still use the core scripts manually:
+
+```bash
+uv run python app/parse.py path/to/dependencies.txt
+```
