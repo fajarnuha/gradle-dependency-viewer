@@ -110,10 +110,19 @@ body {
   border-radius: 12px;
   padding: 16px;
   background: #f1f5f9;
+  text-align: left;
+  margin-top: var(--space-lg);
 }
 
-.hint-box h2 {
-  margin: 0 0 6px;
+.hint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.hint-box h3 {
+  margin: 0;
   font-size: 1rem;
 }
 

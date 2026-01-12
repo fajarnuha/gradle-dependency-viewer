@@ -211,6 +211,28 @@ dropZone.addEventListener('drop', (e) => {
   }
 });
 
+// Copy hint command
+const copyHintBtn = document.getElementById('copy-hint-btn');
+const hintCode = document.getElementById('hint-code');
+
+if (copyHintBtn && hintCode) {
+  copyHintBtn.addEventListener('click', () => {
+    const text = hintCode.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const originalIcon = copyHintBtn.innerHTML;
+      copyHintBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+          stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      `;
+      setTimeout(() => {
+        copyHintBtn.innerHTML = originalIcon;
+      }, 2000);
+    });
+  });
+}
+
 // Initial load
 fetchFiles();
 setState('welcome');
