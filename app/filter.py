@@ -1,6 +1,7 @@
 import copy
 import json
 import argparse
+import sys
 
 def find_matches_and_relatives(nodes, keywords, kept_nodes, ancestors):
     """
@@ -59,6 +60,7 @@ def main():
     parser.add_argument('--file', type=str, required=True, help='The path to the dependency JSON file.')
     parser.add_argument('--filter', type=str, help='A comma-separated list of keywords to filter the dependency tree.')
     parser.add_argument('--project-only', '-p', action='store_true', help='Filter to show only project dependencies.')
+    parser.add_argument('--output', '-o', type=str, help='The path to the output JSON file. If not provided, prints to stdout.')
     args = parser.parse_args()
     
     if not args.filter and not args.project_only:
@@ -68,33 +70,30 @@ def main():
         with open(args.file, 'r', encoding='utf-8') as f:
             dependency_graph = json.load(f)
     except FileNotFoundError:
-        print(f"Error: {args.file} not found.")
+        print(f"Error: {args.file} not found.", file=sys.stderr)
         return
     except Exception as e:
-        print(f"Error reading {args.file}: {e}")
+        print(f"Error reading {args.file}: {e}", file=sys.stderr)
         return
 
     root_nodes = dependency_graph.get('root', [])
     
     if args.project_only:
-        print("Filtering dependencies to show only project dependencies")
+        print("Filtering dependencies to show only project dependencies", file=sys.stderr)
         filtered_nodes = filter_project_only(root_nodes)
-        base_name = args.file.rsplit('.', 1)[0]
-        output_filename = f"{base_name}_project-only.json"
     else:
         keywords = [k.strip() for k in args.filter.split(',')]
-        print(f"Filtering dependencies with keywords: {keywords}")
+        print(f"Filtering dependencies with keywords: {keywords}", file=sys.stderr)
         filtered_nodes = filter_dependencies(root_nodes, keywords)
-        base_name = args.file.rsplit('.', 1)[0]
-        filter_name = args.filter.replace(',', '_')
-        output_filename = f"{base_name}_{filter_name}.json"
     
     dependency_graph['root'] = filtered_nodes
 
-    with open(output_filename, 'w', encoding='utf-8') as f:
-        json.dump(dependency_graph, f, indent=2)
-
-    print(f"Successfully created filtered file: {output_filename}")
+    if args.output:
+        with open(args.output, 'w', encoding='utf-8') as f:
+            json.dump(dependency_graph, f, indent=2)
+        print(f"Successfully created filtered file: {args.output}", file=sys.stderr)
+    else:
+        print(json.dumps(dependency_graph, indent=2))
 
 if __name__ == "__main__":
     main()

@@ -60,7 +60,7 @@
             <p>Upload a Gradle dependency output (TXT) to visualize it as a graph.</p>
             <div class="hint-box">
               <h3>How to generate the TXT</h3>
-              <p>Run your Gradle dependency task (e.g., <code>./gradlew app:dependencies</code>) and export the output
+              <p>Run your Gradle dependency task (e.g., <code>./gradlew app:dependencies --configuration debugRuntimeClasspath > dependencies.txt</code>) and export the output
                 to a TXT file.</p>
             </div>
           </div>
@@ -99,6 +99,16 @@
               <div class="viz-menu">
                 <h3>Visualization menu</h3>
                 <div class="viz-actions">
+                  <div class="filter-group">
+                    <label for="filter-text">Filter:</label>
+                    <input type="text" id="filter-text" placeholder="e.g. androidx, :module" title="Filter by keyword">
+                  </div>
+                  <div class="filter-group">
+                    <label for="project-only">
+                      <input type="checkbox" id="project-only">
+                      Project only
+                    </label>
+                  </div>
                   <button class="secondary-btn" id="open-graph-btn">Open Graph Viewer</button>
                   <button class="secondary-btn" id="open-tree-btn">Open Tree Viewer</button>
                 </div>

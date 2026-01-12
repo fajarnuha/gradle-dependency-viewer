@@ -154,34 +154,45 @@
         let initialJsonData = defaultJsonData;
 
         async function loadInitialData() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const fileName = urlParams.get('file');
+            // Check for injected data from server (Jinja2)
+            const serverTreeData = {{ tree_data | tojson | safe
+        }};
 
-            if (fileName) {
-                try {
-                    const response = await fetch(`/static/data/${fileName}`);
-                    if (!response.ok) throw new Error('File not found');
-                    initialJsonData = await response.json();
-                } catch (error) {
-                    console.error('Failed to fetch file:', error);
-                    noDataBanner.classList.remove('hidden');
-                    noDataBanner.textContent = `Failed to load ${fileName}. Showing default data.`;
-                }
-            } else {
-                const storedRaw = localStorage.getItem('last_result_json');
-                if (storedRaw) {
-                    try {
-                        initialJsonData = JSON.parse(storedRaw);
-                    } catch (error) {
-                        console.error('Failed to parse stored JSON:', error);
-                    }
-                } else {
-                    noDataBanner.classList.remove('hidden');
-                }
-            }
-
+        if (serverTreeData) {
+            initialJsonData = serverTreeData;
             jsonInput.value = JSON.stringify(initialJsonData, null, 2);
             renderGraph(initialJsonData);
+            return;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const fileName = urlParams.get('file');
+
+        if (fileName) {
+            try {
+                const response = await fetch(`/static/data/${fileName}`);
+                if (!response.ok) throw new Error('File not found');
+                initialJsonData = await response.json();
+            } catch (error) {
+                console.error('Failed to fetch file:', error);
+                noDataBanner.classList.remove('hidden');
+                noDataBanner.textContent = `Failed to load ${fileName}. Showing default data.`;
+            }
+        } else {
+            const storedRaw = localStorage.getItem('last_result_json');
+            if (storedRaw) {
+                try {
+                    initialJsonData = JSON.parse(storedRaw);
+                } catch (error) {
+                    console.error('Failed to parse stored JSON:', error);
+                }
+            } else {
+                noDataBanner.classList.remove('hidden');
+            }
+        }
+
+        jsonInput.value = JSON.stringify(initialJsonData, null, 2);
+        renderGraph(initialJsonData);
         }
 
         let root;

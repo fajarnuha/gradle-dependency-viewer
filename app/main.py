@@ -36,31 +36,81 @@ def index(request: Request) -> HTMLResponse:
 
 
 @app.get("/viz/graph_viewer.html", response_class=HTMLResponse)
-async def graph_viewer(request: Request, file: str = None) -> HTMLResponse:
+async def graph_viewer(request: Request, file: str = None, filter: str = None, project_only: bool = False) -> HTMLResponse:
     graph_data = None
     
     if file:
         dep_json_path = DATA_DIR / file
     else:
-        # Fallback for backward compatibility if needed, though we should prefer 'file' param
+        # Fallback for backward compatibility
         dep_json_path = REPO_ROOT / "dependencies.json"
 
     if dep_json_path.exists():
         try:
             from . import convert_to_graph
+            from . import filter as filter_module
             
             # Read the dependency data
             with open(dep_json_path, 'r', encoding='utf-8') as f:
                 dependency_data = json.load(f)
             
+            # Apply filtering if requested
+            if project_only:
+                print("Filtering: Project Only")
+                dependency_data['root'] = filter_module.filter_project_only(dependency_data.get('root', []))
+            elif filter:
+                keywords = [k.strip() for k in filter.split(',')]
+                print(f"Filtering keywords: {keywords}")
+                kept_nodes = set()
+                # filter_dependencies logic needs to be accessible or duplicated. 
+                # Let's use the module function directly.
+                filter_module.find_matches_and_relatives(dependency_data.get('root', []), keywords, kept_nodes, [])
+                dependency_data['root'] = filter_module.rebuild_tree(dependency_data.get('root', []), kept_nodes)
+
             # Process directly in-process
             graph_data = convert_to_graph.process_data(dependency_data)
         except Exception as e:
             print(f"Error converting graph in-process: {e}")
+            import traceback
+            traceback.print_exc()
 
     return templates.TemplateResponse("graph_viewer.html", {
         "request": request,
         "graph_data": graph_data,
+        "file_name": file
+    })
+
+
+@app.get("/viz/tree_viewer.html", response_class=HTMLResponse)
+async def tree_viewer(request: Request, file: str = None, filter: str = None, project_only: bool = False) -> HTMLResponse:
+    tree_data = None
+    
+    if file:
+        dep_json_path = DATA_DIR / file
+        if dep_json_path.exists():
+            try:
+                from . import filter as filter_module
+                
+                with open(dep_json_path, 'r', encoding='utf-8') as f:
+                    dependency_data = json.load(f)
+                
+                # Apply filtering if requested
+                if project_only:
+                     dependency_data['root'] = filter_module.filter_project_only(dependency_data.get('root', []))
+                elif filter:
+                    keywords = [k.strip() for k in filter.split(',')]
+                    kept_nodes = set()
+                    filter_module.find_matches_and_relatives(dependency_data.get('root', []), keywords, kept_nodes, [])
+                    dependency_data['root'] = filter_module.rebuild_tree(dependency_data.get('root', []), kept_nodes)
+                
+                tree_data = dependency_data
+
+            except Exception as e:
+                print(f"Error processing tree data: {e}")
+
+    return templates.TemplateResponse("tree_viewer.html", {
+        "request": request,
+        "tree_data": tree_data,
         "file_name": file
     })
 
@@ -232,10 +282,11 @@ async def enlist(filename: str):
             content=yaml_content,
             media_type="application/x-yaml",
             headers={
-                "Content-Disposition": f"attachment; filename={Path(filename).with_suffix('.yaml').name}"
             }
         )
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+

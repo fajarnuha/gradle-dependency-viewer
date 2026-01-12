@@ -86,13 +86,34 @@ async function selectFile(filename) {
     txtPanel.classList.add('hidden');
     resultsGrid.classList.add('single-column');
 
-    openGraphBtn.onclick = () => {
-      window.location.href = `/viz/graph_viewer.html?file=${filename}`;
+    // Filter elements
+    const filterInput = document.getElementById('filter-text');
+    const projectOnlyCheckbox = document.getElementById('project-only');
+
+    const handleVizClick = (targetUrlConstructor) => {
+      const filterValue = filterInput.value.trim();
+      const projectOnly = projectOnlyCheckbox.checked;
+
+      let url = targetUrlConstructor(filename);
+      const params = new URLSearchParams();
+
+      if (filterValue) {
+        params.append('filter', filterValue);
+      }
+      if (projectOnly) {
+        params.append('project_only', 'true');
+      }
+
+      const queryString = params.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
+      }
+
+      window.location.href = url;
     };
 
-    openTreeBtn.onclick = () => {
-      window.location.href = `/viz/tree_viewer.html?file=${filename}`;
-    };
+    openGraphBtn.onclick = () => handleVizClick((f) => `/viz/graph_viewer.html?file=${f}`);
+    openTreeBtn.onclick = () => handleVizClick((f) => `/viz/tree_viewer.html?file=${f}`);
 
     enlistBtn.onclick = () => {
       window.location.href = `/api/enlist/${filename}`;

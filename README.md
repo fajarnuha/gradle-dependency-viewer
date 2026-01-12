@@ -52,7 +52,7 @@ Access the UI at [http://127.0.0.1:8000](http://127.0.0.1:8000).
 Run the following command in your Gradle project root to generate a text file of your dependencies:
 
 ```bash
-./gradlew app:dependencies > dependencies.txt
+./gradlew app:dependencies --configuration debugRuntimeClasspath > dependencies.txt
 ```
 
 ### 2. Upload and Visualize

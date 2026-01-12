@@ -346,6 +346,28 @@ body {
 }
 
 /* Removed arrow styles */
+/* Filter styles */
+.filter-group {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.filter-group input[type="text"] {
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+  max-width: 200px;
+}
 
 .viz-menu h3 {
   margin: 0 0 8px;
