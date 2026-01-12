@@ -7,8 +7,9 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile, Response
 from fastapi.responses import HTMLResponse
+import yaml
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
@@ -202,3 +203,39 @@ async def delete_file(filename: str):
 
     file_path.unlink()
     return {"message": f"File {filename} deleted."}
+
+
+@app.get("/api/enlist/{filename}")
+async def enlist(filename: str):
+    file_path = DATA_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found.")
+
+    # Security check: ensure it's just a filename and not a path
+    if Path(filename).name != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+
+    try:
+        from . import enlist as enlist_module
+        with open(file_path, 'r', encoding='utf-8') as f:
+            json_data = json.load(f)
+
+        dependencies = enlist_module.extract_dependencies_from_json(json_data)
+        yaml_data = {
+            'dependencies': dependencies,
+            'total_count': len(dependencies)
+        }
+
+        yaml_content = yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
+
+        return Response(
+            content=yaml_content,
+            media_type="application/x-yaml",
+            headers={
+                "Content-Disposition": f"attachment; filename={Path(filename).with_suffix('.yaml').name}"
+            }
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

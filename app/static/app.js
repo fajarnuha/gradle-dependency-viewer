@@ -9,6 +9,7 @@ const jsonPreview = document.getElementById('json-preview');
 const fileList = document.getElementById('file-list');
 const openGraphBtn = document.getElementById('open-graph-btn');
 const openTreeBtn = document.getElementById('open-tree-btn');
+const enlistBtn = document.getElementById('enlist-btn');
 const currentFileName = document.getElementById('current-file-name');
 const txtPanel = document.getElementById('txt-panel');
 const arrowPanel = document.getElementById('arrow-panel');
@@ -93,6 +94,10 @@ async function selectFile(filename) {
 
     openTreeBtn.onclick = () => {
       window.location.href = `/viz/tree_viewer.html?file=${filename}`;
+    };
+
+    enlistBtn.onclick = () => {
+      window.location.href = `/api/enlist/${filename}`;
     };
 
     setState('ready');
