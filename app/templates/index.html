@@ -20,11 +20,16 @@
         <section class="card" id="upload-section">
           <h2>Process New File</h2>
           <form id="upload-form" class="upload-form">
-            <div class="field">
-              <label for="txt-file">Upload TXT file</label>
-              <input id="txt-file" name="file" type="file" accept=".txt" />
+            <div class="drop-zone" id="drop-zone">
+              <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span class="drop-zone__prompt">Drop file here or click to upload (.txt)</span>
+              <input type="file" name="file" id="txt-file" class="drop-zone__input" accept=".txt">
             </div>
-            <button type="submit" class="primary-btn">Upload &amp; Process</button>
             <p class="error" id="upload-error" role="alert" aria-live="polite"></p>
           </form>
         </section>
@@ -69,21 +74,33 @@
 
           <div class="results-grid">
             <div class="panel" id="txt-panel">
-              <div class="panel-title">Uploaded TXT</div>
+              <div class="panel-header">
+                <div class="panel-title">Uploaded TXT</div>
+              </div>
               <pre id="txt-preview" class="code-block"></pre>
             </div>
-            <div class="panel arrow-panel" id="arrow-panel">
-              <div class="arrow">TXT → JSON</div>
-            </div>
+
             <div class="panel">
-              <div class="panel-title">JSON Result</div>
+              <div class="panel-header">
+                <div class="panel-title">JSON Result</div>
+                <button class="icon-btn" id="enlist-btn" title="Enlist Dependencies">
+                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
               <pre id="json-preview" class="code-block"></pre>
               <div class="viz-menu">
                 <h3>Visualization menu</h3>
                 <div class="viz-actions">
                   <button class="secondary-btn" id="open-graph-btn">Open Graph Viewer</button>
                   <button class="secondary-btn" id="open-tree-btn">Open Tree Viewer</button>
-                  <button class="secondary-btn" id="enlist-btn">Enlist</button>
                 </div>
               </div>
             </div>

@@ -1,5 +1,6 @@
 const uploadForm = document.getElementById('upload-form');
 const fileInput = document.getElementById('txt-file');
+const dropZone = document.getElementById('drop-zone');
 const errorEl = document.getElementById('upload-error');
 const welcomeState = document.getElementById('welcome-state');
 const processingState = document.getElementById('processing-state');
@@ -12,7 +13,6 @@ const openTreeBtn = document.getElementById('open-tree-btn');
 const enlistBtn = document.getElementById('enlist-btn');
 const currentFileName = document.getElementById('current-file-name');
 const txtPanel = document.getElementById('txt-panel');
-const arrowPanel = document.getElementById('arrow-panel');
 const resultsGrid = document.querySelector('.results-grid');
 
 let selectedFile = null;
@@ -25,7 +25,6 @@ function setState(state) {
 
 function setDisabled(disabled) {
   fileInput.disabled = disabled;
-  uploadForm.querySelector('button[type="submit"]').disabled = disabled;
 }
 
 function showError(message) {
@@ -85,7 +84,6 @@ async function selectFile(filename) {
 
     // Hide TXT and arrow panels for a cleaner view
     txtPanel.classList.add('hidden');
-    arrowPanel.classList.add('hidden');
     resultsGrid.classList.add('single-column');
 
     openGraphBtn.onclick = () => {
@@ -124,15 +122,10 @@ async function deleteFile(event, filename) {
   }
 }
 
-uploadForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
+async function handleUpload(file) {
   clearError();
+  if (!file) return;
 
-  const file = fileInput.files[0];
-  if (!file) {
-    showError('Please choose a TXT file to upload.');
-    return;
-  }
   if (!isTxtFile(file)) {
     showError('Only .txt files are supported.');
     return;
@@ -163,6 +156,37 @@ uploadForm.addEventListener('submit', async (event) => {
     showError(error.message);
   } finally {
     setDisabled(false);
+  }
+}
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) {
+    handleUpload(fileInput.files[0]);
+  }
+});
+
+dropZone.addEventListener('click', () => {
+  fileInput.click();
+});
+
+['dragover', 'dragleave', 'dragend'].forEach(type => {
+  dropZone.addEventListener(type, (e) => {
+    e.preventDefault();
+    if (type === 'dragover') {
+      dropZone.classList.add('drop-zone--over');
+    } else {
+      dropZone.classList.remove('drop-zone--over');
+    }
+  });
+});
+
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('drop-zone--over');
+
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    handleUpload(e.dataTransfer.files[0]);
   }
 });
 
