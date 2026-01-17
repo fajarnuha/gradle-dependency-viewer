@@ -1,7 +1,10 @@
 import json
 import argparse
 from collections import defaultdict, deque
-from utils import get_root_key_and_nodes
+try:
+    from .utils import get_root_key_and_nodes
+except ImportError:
+    from utils import get_root_key_and_nodes
 
 def traverse_tree(nodes, parent_id=None, graph_nodes=None, edges=None):
     """

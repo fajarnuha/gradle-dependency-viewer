@@ -323,6 +323,13 @@
                     data = defaultGraphData;
                 }
 
+                // Check if data is in graph format (nodes and edges)
+                if (!data.nodes || !data.edges) {
+                    console.error('Data is not in graph format:', data);
+                    alert('The data format is incorrect for the Graph Viewer. It seems to be Tree Viewer data. Please try the Tree Viewer or re-upload your file.');
+                    return;
+                }
+
                 // Update stats
                 document.getElementById('total-nodes').textContent = data.nodes.length;
                 document.getElementById('total-edges').textContent = data.edges.length;

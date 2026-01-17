@@ -2,7 +2,10 @@ import copy
 import json
 import argparse
 import sys
-from utils import get_root_key_and_nodes
+try:
+    from .utils import get_root_key_and_nodes
+except ImportError:
+    from utils import get_root_key_and_nodes
 
 def find_matches_and_relatives(nodes, keywords, kept_nodes, ancestors):
     """

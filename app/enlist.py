@@ -2,7 +2,10 @@ import json
 import yaml
 import argparse
 import os
-from utils import get_root_key_and_nodes
+try:
+    from .utils import get_root_key_and_nodes
+except ImportError:
+    from utils import get_root_key_and_nodes
 
 def collect_dependencies(node, dependencies_set):
     """Recursively collect all dependencies from the JSON structure."""

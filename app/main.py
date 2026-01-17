@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
 APP_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = APP_ROOT.parent
 PARSE_SCRIPT = APP_ROOT / "parse.py"
 CONVERT_SCRIPT = APP_ROOT / "convert_to_graph.py"
 DATA_DIR = APP_ROOT / "static" / "data"
