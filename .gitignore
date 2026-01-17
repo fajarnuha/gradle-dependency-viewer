@@ -110,4 +110,4 @@ dmypy.json
 .pyre/
 .DS_Store
 
-app/static/
+app/static/data/
