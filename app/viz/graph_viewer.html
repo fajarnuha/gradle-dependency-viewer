@@ -226,14 +226,6 @@
 
             <div class="controls">
                 <div class="control-group">
-                    <label for="json-input">JSON Graph Data:</label>
-                    <textarea id="json-input" rows="8" placeholder="Paste your graph JSON here..."></textarea>
-                    <button id="load-graph"
-                        style="margin-top: 10px; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Load
-                        Graph</button>
-                </div>
-
-                <div class="control-group">
                     <label for="search">Search Dependencies:</label>
                     <input type="text" id="search" placeholder="Type to filter nodes...">
                 </div>
@@ -311,56 +303,34 @@
 
         let currentVisualization = null;
 
-        // Load and visualize the graph data
-        function loadGraphFromInput() {
-            const jsonInput = document.getElementById('json-input');
-            let data;
-
-            try {
-                if (jsonInput.value.trim()) {
-                    data = JSON.parse(jsonInput.value);
-                } else {
-                    data = defaultGraphData;
-                }
-
-                // Check if data is in graph format (nodes and edges)
-                if (!data.nodes || !data.edges) {
-                    console.error('Data is not in graph format:', data);
-                    alert('The data format is incorrect for the Graph Viewer. It seems to be Tree Viewer data. Please try the Tree Viewer or re-upload your file.');
-                    return;
-                }
-
-                // Update stats
-                document.getElementById('total-nodes').textContent = data.nodes.length;
-                document.getElementById('total-edges').textContent = data.edges.length;
-                document.getElementById('visible-nodes').textContent = data.nodes.length;
-
-                createVisualization(data);
-            } catch (error) {
-                console.error('Error parsing JSON:', error);
-                alert('Invalid JSON format. Please check your input and try again.');
+        function validateAndRender(data) {
+            if (!data) {
+                data = defaultGraphData;
             }
+
+            // Check if data is in graph format (nodes and edges)
+            if (!data.nodes || !data.edges) {
+                console.error('Data is not in graph format:', data);
+                alert('The data format is incorrect for the Graph Viewer. It seems to be Tree Viewer data. Please try the Tree Viewer or re-upload your file.');
+                return;
+            }
+
+            // Update stats
+            document.getElementById('total-nodes').textContent = data.nodes.length;
+            document.getElementById('total-edges').textContent = data.edges.length;
+            document.getElementById('visible-nodes').textContent = data.nodes.length;
+
+            createVisualization(data);
         }
 
         async function loadGraphFromFile() {
             try {
                 const response = await fetch('dependencies_graph_optimized.json');
                 const data = await response.json();
-
-                // Populate the text area with loaded data
-                document.getElementById('json-input').value = JSON.stringify(data, null, 2);
-
-                // Update stats
-                document.getElementById('total-nodes').textContent = data.nodes.length;
-                document.getElementById('total-edges').textContent = data.edges.length;
-                document.getElementById('visible-nodes').textContent = data.nodes.length;
-
-                createVisualization(data);
+                validateAndRender(data);
             } catch (error) {
                 console.error('Error loading graph data from file:', error);
-                // Fall back to default data
-                document.getElementById('json-input').value = JSON.stringify(defaultGraphData, null, 2);
-                loadGraphFromInput();
+                validateAndRender(defaultGraphData);
             }
         }
 
@@ -555,24 +525,6 @@
                     document.getElementById('total-edges').textContent = data.edges.length;
                     document.getElementById('visible-nodes').textContent = data.nodes.length;
 
-                    // Update the JSON input textarea to reflect changes
-                    // Create a clean copy without x,y coordinates for performance
-                    const cleanData = {
-                        nodes: data.nodes.map(node => ({
-                            id: node.id,
-                            module: node.module,
-                            version: node.version,
-                            resolution: node.resolution,
-                            full: node.full
-                        })),
-                        edges: data.edges.map(edge => ({
-                            source: edge.source.id || edge.source,
-                            target: edge.target.id || edge.target
-                        })),
-                        metadata: data.metadata
-                    };
-                    document.getElementById('json-input').value = JSON.stringify(cleanData, null, 2);
-
                     // Recreate the visualization with updated data
                     createVisualization(data);
                 });
@@ -681,7 +633,6 @@
 
         // Initialize the visualization
         document.addEventListener('DOMContentLoaded', function () {
-            const jsonInput = document.getElementById('json-input');
             const noDataBanner = document.getElementById('no-data');
 
             // Priority 1: Injected data from server (pre-processed by convert_to_graph.py)
@@ -690,8 +641,7 @@
         console.log("Injected graph data:", serverGraphData);
 
         if (serverGraphData && serverGraphData.nodes && serverGraphData.nodes.length > 0) {
-            jsonInput.value = JSON.stringify(serverGraphData, null, 2);
-            loadGraphFromInput();
+            validateAndRender(serverGraphData);
             return;
         } else if (serverGraphData) {
             console.warn("Server returned empty graph data.");
@@ -703,21 +653,14 @@
         if (storedRaw) {
             try {
                 const parsed = JSON.parse(storedRaw);
-                // Note: This is tree data, not graph data. 
-                // We might need to handle this differently, but for now we follow old logic
-                jsonInput.value = JSON.stringify(parsed, null, 2);
-                loadGraphFromInput();
+                validateAndRender(parsed);
             } catch (error) {
                 console.error('Failed to parse stored JSON:', error);
-                jsonInput.value = JSON.stringify(defaultGraphData, null, 2);
+                validateAndRender(defaultGraphData);
             }
         } else {
             noDataBanner.style.display = 'block';
-            jsonInput.value = '';
         }
-
-        // Add event listener for load button
-        document.getElementById('load-graph').addEventListener('click', loadGraphFromInput);
         });
 
         // Handle window resize

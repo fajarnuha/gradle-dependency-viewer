@@ -72,14 +72,6 @@
                 No data found. Please upload a TXT first. <a href="/" class="font-semibold underline">Go back</a>.
             </div>
             <div class="space-y-2">
-                <div>
-                    <textarea id="json-input" rows="4"
-                        class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                        placeholder="Paste your JSON here..."></textarea>
-                    <button id="render-btn"
-                        class="w-full mt-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">Render
-                        Graph</button>
-                </div>
                 <div class="flex items-center space-x-2">
                     <div class="relative flex-grow">
                         <input type="text" id="search-box" placeholder="Search for a module..."
@@ -109,7 +101,7 @@
         </div>
     </div>
 
-    <div id="graph-container" class="w-full h-screen pt-48"></div>
+    <div id="graph-container" class="w-full h-screen pt-32"></div>
 
     <script>
         // The default JSON data
@@ -149,7 +141,6 @@
             ]
         };
 
-        const jsonInput = document.getElementById('json-input');
         const noDataBanner = document.getElementById('no-data');
         let initialJsonData = defaultJsonData;
 
@@ -160,7 +151,6 @@
 
         if (serverTreeData) {
             initialJsonData = serverTreeData;
-            jsonInput.value = JSON.stringify(initialJsonData, null, 2);
             renderGraph(initialJsonData);
             return;
         }
@@ -191,7 +181,6 @@
             }
         }
 
-        jsonInput.value = JSON.stringify(initialJsonData, null, 2);
         renderGraph(initialJsonData);
         }
 
@@ -432,22 +421,6 @@
         }
 
         // --- UI Event Listeners ---
-        document.getElementById('render-btn').addEventListener('click', () => {
-            const jsonInput = document.getElementById('json-input');
-            try {
-                const newData = JSON.parse(jsonInput.value);
-                nodeIdCounter = 0; // Reset counter for new data
-                renderGraph(newData);
-                jsonInput.classList.remove('border-red-500');
-                jsonInput.classList.add('border-slate-300');
-            } catch (error) {
-                console.error("Invalid JSON:", error);
-                jsonInput.classList.add('border-red-500');
-                jsonInput.classList.remove('border-slate-300');
-                alert("Invalid JSON format. Please check the console for details.");
-            }
-        });
-
         document.getElementById('search-box').addEventListener('keyup', handleSearch);
 
         const toggleBtn = document.getElementById('toggle-all-btn');
