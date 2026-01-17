@@ -49,23 +49,24 @@ async def graph_viewer(request: Request, file: str = None, filter: str = None, p
         try:
             from . import convert_to_graph
             from . import filter as filter_module
+            from .utils import get_root_key_and_nodes
             
             # Read the dependency data
             with open(dep_json_path, 'r', encoding='utf-8') as f:
                 dependency_data = json.load(f)
             
+            root_key, root_nodes = get_root_key_and_nodes(dependency_data)
+
             # Apply filtering if requested
             if project_only:
                 print("Filtering: Project Only")
-                dependency_data['root'] = filter_module.filter_project_only(dependency_data.get('root', []))
+                dependency_data[root_key] = filter_module.filter_project_only(root_nodes)
             elif filter:
                 keywords = [k.strip() for k in filter.split(',')]
                 print(f"Filtering keywords: {keywords}")
                 kept_nodes = set()
-                # filter_dependencies logic needs to be accessible or duplicated. 
-                # Let's use the module function directly.
-                filter_module.find_matches_and_relatives(dependency_data.get('root', []), keywords, kept_nodes, [])
-                dependency_data['root'] = filter_module.rebuild_tree(dependency_data.get('root', []), kept_nodes)
+                filter_module.find_matches_and_relatives(root_nodes, keywords, kept_nodes, [])
+                dependency_data[root_key] = filter_module.rebuild_tree(root_nodes, kept_nodes)
 
             # Process directly in-process
             graph_data = convert_to_graph.process_data(dependency_data)
@@ -90,18 +91,21 @@ async def tree_viewer(request: Request, file: str = None, filter: str = None, pr
         if dep_json_path.exists():
             try:
                 from . import filter as filter_module
+                from .utils import get_root_key_and_nodes
                 
                 with open(dep_json_path, 'r', encoding='utf-8') as f:
                     dependency_data = json.load(f)
                 
+                root_key, root_nodes = get_root_key_and_nodes(dependency_data)
+
                 # Apply filtering if requested
                 if project_only:
-                     dependency_data['root'] = filter_module.filter_project_only(dependency_data.get('root', []))
+                     dependency_data[root_key] = filter_module.filter_project_only(root_nodes)
                 elif filter:
                     keywords = [k.strip() for k in filter.split(',')]
                     kept_nodes = set()
-                    filter_module.find_matches_and_relatives(dependency_data.get('root', []), keywords, kept_nodes, [])
-                    dependency_data['root'] = filter_module.rebuild_tree(dependency_data.get('root', []), kept_nodes)
+                    filter_module.find_matches_and_relatives(root_nodes, keywords, kept_nodes, [])
+                    dependency_data[root_key] = filter_module.rebuild_tree(root_nodes, kept_nodes)
                 
                 tree_data = dependency_data
 

@@ -2,6 +2,7 @@ import copy
 import json
 import argparse
 import sys
+from utils import get_root_key_and_nodes
 
 def find_matches_and_relatives(nodes, keywords, kept_nodes, ancestors):
     """
@@ -76,7 +77,10 @@ def main():
         print(f"Error reading {args.file}: {e}", file=sys.stderr)
         return
 
-    root_nodes = dependency_graph.get('root', [])
+    root_key, root_nodes = get_root_key_and_nodes(dependency_graph)
+    if root_key is None:
+        print(f"Error: Could not find root nodes in {args.file}", file=sys.stderr)
+        return
     
     if args.project_only:
         print("Filtering dependencies to show only project dependencies", file=sys.stderr)
@@ -86,7 +90,7 @@ def main():
         print(f"Filtering dependencies with keywords: {keywords}", file=sys.stderr)
         filtered_nodes = filter_dependencies(root_nodes, keywords)
     
-    dependency_graph['root'] = filtered_nodes
+    dependency_graph[root_key] = filtered_nodes
 
     if args.output:
         with open(args.output, 'w', encoding='utf-8') as f:

@@ -207,9 +207,20 @@
             const width = container.clientWidth;
             const height = container.clientHeight;
 
+            let rootNodes = jsonData.root;
+            if (!rootNodes) {
+                // Find first key that is an array and not raw_txt
+                for (const key in jsonData) {
+                    if (Array.isArray(jsonData[key]) && key !== 'raw_txt') {
+                        rootNodes = jsonData[key];
+                        break;
+                    }
+                }
+            }
+
             const data = {
                 module: "Root Dependencies",
-                children: jsonData.root
+                children: rootNodes || []
             };
 
             root = d3.hierarchy(data);

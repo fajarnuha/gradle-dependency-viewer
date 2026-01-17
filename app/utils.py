@@ -9,7 +9,7 @@ def parse_dependency_line(line):
     level = 0
     indentation_width = 5  # A common indentation width for gradle
     for i, char in enumerate(line):
-        if char not in ' |\+-':
+        if char not in ' |\\+-':
             level = i // indentation_width
             break
     
@@ -71,3 +71,16 @@ def parse_dependency_line(line):
         "children": []
     }
     return node, level
+
+def get_root_key_and_nodes(dependency_data):
+    """Returns the key and list of root nodes from the dependency data."""
+    if 'root' in dependency_data:
+        return 'root', dependency_data['root']
+    
+    # Exclude known non-root keys
+    excluded_keys = {'raw_txt', 'metadata', 'nodes', 'edges'}
+    for key, value in dependency_data.items():
+        if key not in excluded_keys and isinstance(value, list):
+            return key, value
+            
+    return None, []

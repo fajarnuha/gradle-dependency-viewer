@@ -7,6 +7,15 @@ from utils import parse_dependency_line
 
 
 
+def extract_project_name(lines):
+    """Extracts the project name from the lines (e.g., Project ':app' -> 'app')."""
+    for line in lines:
+        match = re.search(r"^Project ':([^']+)'", line.strip())
+        if match:
+            return match.group(1)
+    return "root"
+
+
 def parse_dependencies(lines):
     """Parses the dependency tree and returns a list of root nodes."""
     root_nodes = []
@@ -78,9 +87,10 @@ def main():
         print(f"Error: Could not decode {input_path} with common encodings.")
         return
 
+    project_name = extract_project_name(lines)
     root_nodes = parse_dependencies(lines)
 
-    dependency_graph = {"root": root_nodes}
+    dependency_graph = {project_name: root_nodes}
 
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(dependency_graph, f, indent=2)

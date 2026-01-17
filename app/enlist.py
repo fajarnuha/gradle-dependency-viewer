@@ -2,6 +2,7 @@ import json
 import yaml
 import argparse
 import os
+from utils import get_root_key_and_nodes
 
 def collect_dependencies(node, dependencies_set):
     """Recursively collect all dependencies from the JSON structure."""
@@ -24,9 +25,9 @@ def extract_dependencies_from_json(json_data):
     dependencies_set = set()
     
     # Process root nodes
-    if 'root' in json_data and isinstance(json_data['root'], list):
-        for root_node in json_data['root']:
-            collect_dependencies(root_node, dependencies_set)
+    _, root_nodes = get_root_key_and_nodes(json_data)
+    for root_node in root_nodes:
+        collect_dependencies(root_node, dependencies_set)
     
     return sorted(list(dependencies_set))
 

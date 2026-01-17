@@ -12,7 +12,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(node['full'], "org.springframework.boot:spring-boot-starter-web:2.5.4 -> 3.0.0")
 
     def test_parse_dependency_line_indented(self):
-        line = "|    +--- org.springframework:spring-beans:5.3.9 -> 6.0.0 (c)"
+        line = r"|    +--- org.springframework:spring-beans:5.3.9 -> 6.0.0 (c)"
         node, level = parse_dependency_line(line)
         self.assertEqual(level, 2)
         self.assertEqual(node['module'], "org.springframework:spring-beans")
@@ -21,7 +21,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(node['full'], "org.springframework:spring-beans:5.3.9 -> 6.0.0 (c)")
 
     def test_parse_dependency_line_with_star(self):
-        line = "|    \--- org.springframework:spring-core:5.3.9 -> 6.0.0 (*)"
+        line = r"|    \--- org.springframework:spring-core:5.3.9 -> 6.0.0 (*)"
         node, level = parse_dependency_line(line)
         self.assertEqual(level, 2)
         self.assertEqual(node['module'], "org.springframework:spring-core")

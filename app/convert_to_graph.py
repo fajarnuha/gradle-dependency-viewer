@@ -1,6 +1,7 @@
 import json
 import argparse
 from collections import defaultdict, deque
+from utils import get_root_key_and_nodes
 
 def traverse_tree(nodes, parent_id=None, graph_nodes=None, edges=None):
     """
@@ -171,7 +172,7 @@ def process_data(dependency_data, distance=None, exclude=None):
     Process dependency tree data into graph format with optional filtering.
     """
     # Extract root nodes
-    root_nodes = dependency_data.get('root', [])
+    _, root_nodes = get_root_key_and_nodes(dependency_data)
     if not root_nodes:
         return None
     
