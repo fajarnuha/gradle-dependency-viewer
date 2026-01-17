@@ -50,6 +50,8 @@ async function fetchFiles() {
 }
 
 function renderFileList(files) {
+  if (!fileList) return;
+
   if (files.length === 0) {
     fileList.innerHTML = '<li class="empty-list">No past files found.</li>';
     return;
@@ -71,11 +73,15 @@ function renderFileList(files) {
 
 async function selectFile(filename) {
   selectedFile = filename;
-  renderFileList(await (await fetch('/api/files')).json());
-
-  // Fetch file content to preview
+  
   try {
+    const filesResponse = await fetch('/api/files');
+    const files = await filesResponse.json();
+    renderFileList(files);
+
+    // Fetch file content to preview
     const response = await fetch(`/static/data/${filename}`);
+    if (!response.ok) throw new Error('File fetch failed');
     const data = await response.json();
 
     currentFileName.textContent = filename;
@@ -122,6 +128,9 @@ async function selectFile(filename) {
     setState('ready');
   } catch (error) {
     console.error('Failed to load file content:', error);
+    // If we fail here, we should probably go back to welcome or show error
+    // If called from handleUpload, the error will be caught there.
+    throw error;
   }
 }
 
@@ -170,8 +179,8 @@ async function handleUpload(file) {
     }
 
     const result = await response.json();
-    fetchFiles();
-    selectFile(result.filename);
+    await fetchFiles();
+    await selectFile(result.filename);
   } catch (error) {
     setState('welcome');
     showError(error.message);

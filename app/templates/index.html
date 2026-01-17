@@ -15,12 +15,12 @@
       <p>Upload your dependency TXT file or choose from your past processed dependencies.</p>
     </header>
 
-    <div class="main-content">
+    <div class="main-content" {% if deps_history != '1' %}style="align-items: stretch;"{% endif %}>
       <aside class="sidebar">
-        <section class="card" id="upload-section">
+        <section class="card" id="upload-section" {% if deps_history != '1' %}style="flex-grow: 1; display: flex; flex-direction: column;"{% endif %}>
           <h2>Process New File</h2>
-          <form id="upload-form" class="upload-form">
-            <div class="drop-zone" id="drop-zone">
+          <form id="upload-form" class="upload-form" {% if deps_history != '1' %}style="flex-grow: 1;"{% endif %}>
+            <div class="drop-zone" id="drop-zone" {% if deps_history != '1' %}style="flex-grow: 1; justify-content: center;"{% endif %}>
               <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2" fill="none"
                 stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -34,6 +34,7 @@
           </form>
         </section>
 
+        {% if deps_history == '1' %}
         <section class="card" id="history-section">
           <h2>Past Dependencies</h2>
           <ul id="file-list" class="file-list">
@@ -41,6 +42,7 @@
             <li class="empty-list">No past files found.</li>
           </ul>
         </section>
+        {% endif %}
       </aside>
 
       <section class="content-area">

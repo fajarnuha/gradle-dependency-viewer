@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import uuid
+from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, Response
-from fastapi.responses import HTMLResponse
 import yaml
+from fastapi import FastAPI, File, HTTPException, Response, UploadFile
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
@@ -25,21 +27,25 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI()
 
-templates = Jinja2Templates(directory=[
-    str(APP_ROOT / "templates"),
-    str(APP_ROOT / "viz")
-])
+templates = Jinja2Templates(
+    directory=[str(APP_ROOT / "templates"), str(APP_ROOT / "viz")]
+)
 
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("index.html", {"request": request})
+    deps_history = os.environ.get("DEPS_HISTORY", "1")
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "deps_history": deps_history}
+    )
 
 
 @app.get("/viz/graph_viewer.html", response_class=HTMLResponse)
-async def graph_viewer(request: Request, file: str = None, filter: str = None, project_only: bool = False) -> HTMLResponse:
+async def graph_viewer(
+    request: Request, file: str = None, filter: str = None, project_only: bool = False
+) -> HTMLResponse:
     graph_data = None
-    
+
     if file:
         dep_json_path = DATA_DIR / file
     else:
@@ -51,73 +57,86 @@ async def graph_viewer(request: Request, file: str = None, filter: str = None, p
             from . import convert_to_graph
             from . import filter as filter_module
             from .utils import get_root_key_and_nodes
-            
+
             # Read the dependency data
-            with open(dep_json_path, 'r', encoding='utf-8') as f:
+            with open(dep_json_path, "r", encoding="utf-8") as f:
                 dependency_data = json.load(f)
-            
+
             root_key, root_nodes = get_root_key_and_nodes(dependency_data)
 
             # Apply filtering if requested
             if project_only:
                 print("Filtering: Project Only")
-                dependency_data[root_key] = filter_module.filter_project_only(root_nodes)
+                dependency_data[root_key] = filter_module.filter_project_only(
+                    root_nodes
+                )
             elif filter:
-                keywords = [k.strip() for k in filter.split(',')]
+                keywords = [k.strip() for k in filter.split(",")]
                 print(f"Filtering keywords: {keywords}")
                 kept_nodes = set()
-                filter_module.find_matches_and_relatives(root_nodes, keywords, kept_nodes, [])
-                dependency_data[root_key] = filter_module.rebuild_tree(root_nodes, kept_nodes)
+                filter_module.find_matches_and_relatives(
+                    root_nodes, keywords, kept_nodes, []
+                )
+                dependency_data[root_key] = filter_module.rebuild_tree(
+                    root_nodes, kept_nodes
+                )
 
             # Process directly in-process
             graph_data = convert_to_graph.process_data(dependency_data)
         except Exception as e:
             print(f"Error converting graph in-process: {e}")
             import traceback
+
             traceback.print_exc()
 
-    return templates.TemplateResponse("graph_viewer.html", {
-        "request": request,
-        "graph_data": graph_data,
-        "file_name": file
-    })
+    return templates.TemplateResponse(
+        "graph_viewer.html",
+        {"request": request, "graph_data": graph_data, "file_name": file},
+    )
 
 
 @app.get("/viz/tree_viewer.html", response_class=HTMLResponse)
-async def tree_viewer(request: Request, file: str = None, filter: str = None, project_only: bool = False) -> HTMLResponse:
+async def tree_viewer(
+    request: Request, file: str = None, filter: str = None, project_only: bool = False
+) -> HTMLResponse:
     tree_data = None
-    
+
     if file:
         dep_json_path = DATA_DIR / file
         if dep_json_path.exists():
             try:
                 from . import filter as filter_module
                 from .utils import get_root_key_and_nodes
-                
-                with open(dep_json_path, 'r', encoding='utf-8') as f:
+
+                with open(dep_json_path, "r", encoding="utf-8") as f:
                     dependency_data = json.load(f)
-                
+
                 root_key, root_nodes = get_root_key_and_nodes(dependency_data)
 
                 # Apply filtering if requested
                 if project_only:
-                     dependency_data[root_key] = filter_module.filter_project_only(root_nodes)
+                    dependency_data[root_key] = filter_module.filter_project_only(
+                        root_nodes
+                    )
                 elif filter:
-                    keywords = [k.strip() for k in filter.split(',')]
+                    keywords = [k.strip() for k in filter.split(",")]
                     kept_nodes = set()
-                    filter_module.find_matches_and_relatives(root_nodes, keywords, kept_nodes, [])
-                    dependency_data[root_key] = filter_module.rebuild_tree(root_nodes, kept_nodes)
-                
+                    filter_module.find_matches_and_relatives(
+                        root_nodes, keywords, kept_nodes, []
+                    )
+                    dependency_data[root_key] = filter_module.rebuild_tree(
+                        root_nodes, kept_nodes
+                    )
+
                 tree_data = dependency_data
 
             except Exception as e:
                 print(f"Error processing tree data: {e}")
 
-    return templates.TemplateResponse("tree_viewer.html", {
-        "request": request,
-        "tree_data": tree_data,
-        "file_name": file
-    })
+    return templates.TemplateResponse(
+        "tree_viewer.html",
+        {"request": request, "tree_data": tree_data, "file_name": file},
+    )
 
 
 app.mount("/static", StaticFiles(directory=APP_ROOT / "static"), name="static")
@@ -186,7 +205,7 @@ async def upload(file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=400, detail="Only .txt files are supported.")
 
     data = await file.read()
-    
+
     # Try common encodings
     txt_content = None
     for encoding in ["utf-8-sig", "utf-16", "cp1252"]:
@@ -202,7 +221,7 @@ async def upload(file: UploadFile = File(...)) -> dict:
         except Exception as exc:
             raise HTTPException(
                 status_code=400,
-                detail="TXT file could not be decoded. Please ensure it is UTF-8 or UTF-16 encoded."
+                detail="TXT file could not be decoded. Please ensure it is UTF-8 or UTF-16 encoded.",
             ) from exc
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as temp_file:
@@ -211,17 +230,30 @@ async def upload(file: UploadFile = File(...)) -> dict:
 
     try:
         parsed_json = _run_parser(temp_path)
-        
+
         # Save to static/data directory with the same name as txt file (but .json)
         # Embed the original TXT content for persistence
         parsed_json["raw_txt"] = txt_content
-        
-        json_filename = Path(file.filename).with_suffix(".json").name
+
+        # Generate timestamped filename
+        timestamp = datetime.now().strftime("%d%H%M")
+        original_stem = Path(file.filename).stem
+        json_filename = f"{original_stem}_{timestamp}.json"
         dest_path = DATA_DIR / json_filename
-        
-        with open(dest_path, 'w', encoding='utf-8') as f:
+
+        with open(dest_path, "w", encoding="utf-8") as f:
             json.dump(parsed_json, f, indent=2)
-            
+
+        # Cleanup old files (keep max 20)
+        json_files = sorted(DATA_DIR.glob("*.json"), key=lambda f: f.stat().st_mtime)
+        while len(json_files) > 20:
+            file_to_remove = json_files.pop(0)
+            try:
+                file_to_remove.unlink()
+                print(f"Removed old file: {file_to_remove.name}")
+            except Exception as e:
+                print(f"Error removing file {file_to_remove.name}: {e}")
+
     finally:
         temp_path.unlink(missing_ok=True)
 
@@ -236,11 +268,9 @@ async def upload(file: UploadFile = File(...)) -> dict:
 async def list_files():
     files = []
     for f in DATA_DIR.glob("*.json"):
-        files.append({
-            "name": f.name,
-            "size": f.stat().st_size,
-            "modified": f.stat().st_mtime
-        })
+        files.append(
+            {"name": f.name, "size": f.stat().st_size, "modified": f.stat().st_mtime}
+        )
     # Sort by modification time (newest first)
     files.sort(key=lambda x: x["modified"], reverse=True)
     return files
@@ -251,10 +281,10 @@ async def delete_file(filename: str):
     file_path = DATA_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found.")
-    
+
     # Security check: ensure it's just a filename and not a path
     if Path(filename).name != filename:
-         raise HTTPException(status_code=400, detail="Invalid filename.")
+        raise HTTPException(status_code=400, detail="Invalid filename.")
 
     file_path.unlink()
     return {"message": f"File {filename} deleted."}
@@ -272,26 +302,20 @@ async def enlist(filename: str):
 
     try:
         from . import enlist as enlist_module
-        with open(file_path, 'r', encoding='utf-8') as f:
+
+        with open(file_path, "r", encoding="utf-8") as f:
             json_data = json.load(f)
 
         dependencies = enlist_module.extract_dependencies_from_json(json_data)
-        yaml_data = {
-            'dependencies': dependencies,
-            'total_count': len(dependencies)
-        }
+        yaml_data = {"dependencies": dependencies, "total_count": len(dependencies)}
 
         yaml_content = yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
 
         return Response(
-            content=yaml_content,
-            media_type="application/x-yaml",
-            headers={
-            }
+            content=yaml_content, media_type="application/x-yaml", headers={}
         )
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
-
