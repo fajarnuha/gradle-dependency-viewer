@@ -413,6 +413,8 @@
                 node.fy = null; // Allow movement
             });
 
+            let currentNodeRadius = 5;
+
             // Create force simulation
             const simulation = d3.forceSimulation(data.nodes)
                 .force('link', d3.forceLink(data.edges).id(d => d.id).distance(50))
@@ -433,8 +435,16 @@
                     }
                 }).strength(0.3));
 
+            const linkGroup = g.append('g');
+            const nodeGroup = g.append('g');
+
+            const dragBehavior = d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended);
+
             // Create links
-            const link = g.append('g')
+            let link = linkGroup
                 .selectAll('line')
                 .data(data.edges)
                 .enter().append('line')
@@ -442,23 +452,21 @@
                 .attr('marker-end', 'url(#arrowhead)');
 
             // Create nodes
-            const node = g.append('g')
+            let node = nodeGroup
                 .selectAll('circle')
                 .data(data.nodes)
                 .enter().append('circle')
                 .attr('class', 'node')
-                .attr('r', 5)
+                .attr('r', currentNodeRadius)
                 .attr('fill', d => getNodeColor(d.module))
-                .call(d3.drag()
-                    .on('start', dragstarted)
-                    .on('drag', dragged)
-                    .on('end', dragended));
+                .call(dragBehavior);
 
             // Add tooltips and interactions
             const tooltip = d3.select('#tooltip');
 
-            node
-                .on('mouseover', function (event, d) {
+            function attachNodeInteractions(selection) {
+                selection
+                    .on('mouseover', function (event, d) {
                     // Highlight connected nodes and links
                     const connectedNodes = new Set();
                     connectedNodes.add(d.id);
@@ -485,13 +493,13 @@
                             ${d.resolution ? `Resolution: ${d.resolution}<br>` : ''}
                             Full: ${d.full}
                         `);
-                })
-                .on('mouseout', function () {
+                    })
+                    .on('mouseout', function () {
                     link.classed('highlighted', false);
                     node.classed('highlighted', false);
                     tooltip.style('display', 'none');
-                })
-                .on('click', function (event, d) {
+                    })
+                    .on('click', function (event, d) {
                     // Show node info in sidebar
                     const nodeInfo = document.getElementById('node-info');
                     document.getElementById('node-module').textContent = d.module;
@@ -499,72 +507,128 @@
                     document.getElementById('node-resolution').textContent = d.resolution || 'N/A';
                     document.getElementById('node-full').textContent = d.full;
                     nodeInfo.style.display = 'block';
-                })
-                .on('contextmenu', function (event, d) {
+                    })
+                    .on('contextmenu', function (event, d) {
                     event.preventDefault(); // Prevent default context menu
 
-                    // Remove node from data
-                    const nodeIndex = data.nodes.findIndex(n => n.id === d.id);
-                    if (nodeIndex !== -1) {
-                        data.nodes.splice(nodeIndex, 1);
-                    }
+                    removeNode(d);
+                });
+            }
 
-                    // Remove all edges connected to this node
-                    data.edges = data.edges.filter(edge => {
-                        const sourceId = edge.source.id || edge.source;
-                        const targetId = edge.target.id || edge.target;
-                        return sourceId !== d.id && targetId !== d.id;
-                    });
+            attachNodeInteractions(node);
 
-                    // Update metadata
-                    data.metadata.total_nodes = data.nodes.length;
-                    data.metadata.total_edges = data.edges.length;
+            function linkKey(edge) {
+                const sourceId = edge.source.id || edge.source;
+                const targetId = edge.target.id || edge.target;
+                return `${sourceId}->${targetId}`;
+            }
 
-                    // Update stats display
-                    document.getElementById('total-nodes').textContent = data.nodes.length;
-                    document.getElementById('total-edges').textContent = data.edges.length;
-                    document.getElementById('visible-nodes').textContent = data.nodes.length;
+            function updateStats() {
+                document.getElementById('total-nodes').textContent = data.nodes.length;
+                document.getElementById('total-edges').textContent = data.edges.length;
+                document.getElementById('visible-nodes').textContent = data.nodes.length;
+            }
 
-                    // Recreate the visualization with updated data
-                    createVisualization(data);
+            function updateSelections() {
+                link = link.data(data.edges, linkKey);
+                link.exit()
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 0)
+                    .remove();
+                link = link.enter()
+                    .append('line')
+                    .attr('class', 'link')
+                    .attr('marker-end', 'url(#arrowhead)')
+                    .style('opacity', 0)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 0.6)
+                    .selection()
+                    .merge(link);
+
+                node = node.data(data.nodes, d => d.id);
+                node.exit()
+                    .transition()
+                    .duration(200)
+                    .attr('r', 0)
+                    .style('opacity', 0)
+                    .remove();
+
+                const nodeEnter = node.enter()
+                    .append('circle')
+                    .attr('class', 'node')
+                    .attr('r', 0)
+                    .attr('fill', d => getNodeColor(d.module))
+                    .style('opacity', 0)
+                    .call(dragBehavior);
+
+                node = nodeEnter.merge(node);
+                nodeEnter
+                    .transition()
+                    .duration(200)
+                    .attr('r', currentNodeRadius)
+                    .style('opacity', 1);
+
+                attachNodeInteractions(node);
+
+                simulation.nodes(data.nodes);
+                simulation.force('link').links(data.edges);
+                simulation.alpha(0.4).restart();
+            }
+
+            function removeNode(nodeToRemove) {
+                data.nodes = data.nodes.filter(n => n.id !== nodeToRemove.id);
+                data.edges = data.edges.filter(edge => {
+                    const sourceId = edge.source.id || edge.source;
+                    const targetId = edge.target.id || edge.target;
+                    return sourceId !== nodeToRemove.id && targetId !== nodeToRemove.id;
                 });
 
-            // Update positions on simulation tick
-            simulation.on('tick', () => {
+                data.metadata.total_nodes = data.nodes.length;
+                data.metadata.total_edges = data.edges.length;
+                updateStats();
+                updateSelections();
+            }
+
+            function updateNodePositions() {
+                node.attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+            }
+
+            function updateLinkPositions() {
                 link.attr('x1', d => {
                     const dx = d.target.x - d.source.x;
                     const dy = d.target.y - d.source.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const radius = parseFloat(node.filter(n => n.id === d.source.id).attr('r')) || 5;
-                    return d.source.x + (dx / distance) * radius;
+                    const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+                    return d.source.x + (dx / distance) * currentNodeRadius;
                 })
                     .attr('y1', d => {
                         const dx = d.target.x - d.source.x;
                         const dy = d.target.y - d.source.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const radius = parseFloat(node.filter(n => n.id === d.source.id).attr('r')) || 5;
-                        return d.source.y + (dy / distance) * radius;
+                        const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+                        return d.source.y + (dy / distance) * currentNodeRadius;
                     })
                     .attr('x2', d => {
                         const dx = d.source.x - d.target.x;
                         const dy = d.source.y - d.target.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
-                        const arrowOffset = 5; // Account for smaller arrow marker size
-                        return d.target.x + (dx / distance) * (radius + arrowOffset);
+                        const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+                        const arrowOffset = 5;
+                        return d.target.x + (dx / distance) * (currentNodeRadius + arrowOffset);
                     })
                     .attr('y2', d => {
                         const dx = d.source.x - d.target.x;
                         const dy = d.source.y - d.target.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
-                        const arrowOffset = 5; // Account for smaller arrow marker size
-                        return d.target.y + (dy / distance) * (radius + arrowOffset);
+                        const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+                        const arrowOffset = 5;
+                        return d.target.y + (dy / distance) * (currentNodeRadius + arrowOffset);
                     });
+            }
 
-                node
-                    .attr('cx', d => d.x)
-                    .attr('cy', d => d.y);
+            // Update positions on simulation tick
+            simulation.on('tick', () => {
+                updateLinkPositions();
+                updateNodePositions();
             });
 
             // Store current visualization reference
@@ -580,6 +644,10 @@
             function dragged(event, d) {
                 d.fx = event.x;
                 d.fy = event.y;
+                d.x = event.x;
+                d.y = event.y;
+                updateNodePositions();
+                updateLinkPositions();
             }
 
             function dragended(event, d) {
@@ -615,9 +683,11 @@
             nodeSizeSlider.addEventListener('input', function () {
                 const size = this.value;
                 nodeSizeValue.textContent = size;
-                node.attr('r', size);
-                simulation.force('collision').radius(parseInt(size) + 2);
+                currentNodeRadius = parseInt(size);
+                node.attr('r', currentNodeRadius);
+                simulation.force('collision').radius(currentNodeRadius + 2);
                 simulation.alpha(0.3).restart();
+                updateLinkPositions();
             });
 
             // Link distance control
