@@ -1,0 +1,12 @@
+description = "Increments version in pyproject.toml, tags, commits, and pushes"
+prompt = """
+Do the following task, your job is to finalize the project for github action deployment
+
+- Use @sripts/up_version to increment the version
+- Check the python project is built successfully, Fix if there is minor issue, abort and tell me when there is a major issue
+- Stage and commit if there is any change
+- Add git tag with 'v' prefix followed by version already in pyproject.toml
+- Push to the github
+
+Summarize the process in short and concise format
+"""

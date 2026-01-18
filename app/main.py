@@ -36,7 +36,7 @@ templates = Jinja2Templates(
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
-    deps_history = os.environ.get("DEPS_HISTORY", "0")
+    deps_history = os.environ.get("DEPS_HISTORY", "1")
     return templates.TemplateResponse(
         "index.html", {"request": request, "deps_history": deps_history}
     )
@@ -204,14 +204,16 @@ async def list_samples():
     # List .json files in the sample directory
     for f in SAMPLE_DIR.glob("*.json"):
         # Expecting filename format: {project}_ddMMhh.json
-        parts = f.stem.split('_')
+        parts = f.stem.split("_")
         project_name = parts[0] if len(parts) > 0 else f.stem
-        
-        samples.append({
-            "name": project_name,
-            "filename": f.name,
-            "path": f"/static/sample/{f.name}"
-        })
+
+        samples.append(
+            {
+                "name": project_name,
+                "filename": f.name,
+                "path": f"/static/sample/{f.name}",
+            }
+        )
     return samples
 
 
@@ -220,17 +222,17 @@ async def process_sample(filename: str):
     sample_path = SAMPLE_DIR / filename
     if not sample_path.exists():
         raise HTTPException(status_code=404, detail="Sample file not found.")
-    
+
     # Generate timestamped filename for the data directory to avoid conflicts/overwrites
     # and to match the upload behavior (sort of)
     timestamp = datetime.now().strftime("%d%H%M")
-    original_stem = sample_path.stem.split('_')[0] # keep project name part
+    original_stem = sample_path.stem.split("_")[0]  # keep project name part
     dest_filename = f"{original_stem}_sample_{timestamp}.json"
     dest_path = DATA_DIR / dest_filename
-    
+
     try:
         dest_path.write_bytes(sample_path.read_bytes())
-        
+
         # Cleanup old files (keep max 20) logic duplicate - could be refactored but ok for now
         json_files = sorted(DATA_DIR.glob("*.json"), key=lambda f: f.stat().st_mtime)
         while len(json_files) > 20:
@@ -239,7 +241,7 @@ async def process_sample(filename: str):
                 file_to_remove.unlink()
             except Exception:
                 pass
-                
+
         return {"filename": dest_filename}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process sample: {e}")

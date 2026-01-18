@@ -89,6 +89,7 @@ jobs:
             docker run -d \
               --name gradle-dependency-viewer \
               --restart unless-stopped \
+              -e DEPS_HISTORY=1 \
               -p 8000:8000 \
               "$FULL_IMAGE"
             
