@@ -188,6 +188,7 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: var(--space-lg);
   align-items: stretch;
+  min-width: 0;
 }
 
 .results-grid.single-column {
@@ -203,6 +204,7 @@ body {
   flex-direction: column;
   gap: var(--space-md);
   position: relative;
+  min-width: 0;
 }
 
 .panel-header {
