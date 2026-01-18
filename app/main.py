@@ -21,9 +21,11 @@ REPO_ROOT = APP_ROOT.parent
 PARSE_SCRIPT = APP_ROOT / "parse.py"
 CONVERT_SCRIPT = APP_ROOT / "convert_to_graph.py"
 DATA_DIR = APP_ROOT / "static" / "data"
+SAMPLE_DIR = APP_ROOT / "static" / "sample"
 
 # Ensure data directory exists
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI()
 
@@ -194,6 +196,53 @@ def _run_parser(input_path: Path) -> dict:
             status_code=500,
             detail=f"Parser failed to produce JSON output. stderr: {stderr or 'No stderr output.'}",
         )
+
+
+@app.get("/api/samples")
+async def list_samples():
+    samples = []
+    # List .json files in the sample directory
+    for f in SAMPLE_DIR.glob("*.json"):
+        # Expecting filename format: {project}_ddMMhh.json
+        parts = f.stem.split('_')
+        project_name = parts[0] if len(parts) > 0 else f.stem
+        
+        samples.append({
+            "name": project_name,
+            "filename": f.name,
+            "path": f"/static/sample/{f.name}"
+        })
+    return samples
+
+
+@app.post("/api/samples/{filename}/process")
+async def process_sample(filename: str):
+    sample_path = SAMPLE_DIR / filename
+    if not sample_path.exists():
+        raise HTTPException(status_code=404, detail="Sample file not found.")
+    
+    # Generate timestamped filename for the data directory to avoid conflicts/overwrites
+    # and to match the upload behavior (sort of)
+    timestamp = datetime.now().strftime("%d%H%M")
+    original_stem = sample_path.stem.split('_')[0] # keep project name part
+    dest_filename = f"{original_stem}_sample_{timestamp}.json"
+    dest_path = DATA_DIR / dest_filename
+    
+    try:
+        dest_path.write_bytes(sample_path.read_bytes())
+        
+        # Cleanup old files (keep max 20) logic duplicate - could be refactored but ok for now
+        json_files = sorted(DATA_DIR.glob("*.json"), key=lambda f: f.stat().st_mtime)
+        while len(json_files) > 20:
+            file_to_remove = json_files.pop(0)
+            try:
+                file_to_remove.unlink()
+            except Exception:
+                pass
+                
+        return {"filename": dest_filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process sample: {e}")
 
 
 @app.post("/api/upload")

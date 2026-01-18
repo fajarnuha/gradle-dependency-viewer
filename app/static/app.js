@@ -258,4 +258,59 @@ if (copyHintBtn && hintCode) {
 
 // Initial load
 fetchFiles();
+fetchSamples();
 setState('welcome');
+
+// Sample logic
+const sampleSection = document.getElementById('sample-section');
+const sampleList = document.getElementById('sample-list');
+
+async function fetchSamples() {
+  try {
+    const response = await fetch('/api/samples');
+    const samples = await response.json();
+    renderSampleList(samples);
+  } catch (error) {
+    console.error('Failed to fetch samples:', error);
+  }
+}
+
+function renderSampleList(samples) {
+  if (samples.length === 0) {
+    sampleSection.classList.add('hidden');
+    return;
+  }
+
+  sampleSection.classList.remove('hidden');
+  sampleList.innerHTML = samples.map(sample => `
+    <button class="sample-chip" onclick="handleSampleClick('${sample.filename}')">
+      ${sample.name}
+    </button>
+  `).join('');
+}
+
+async function handleSampleClick(filename) {
+  clearError();
+  setState('processing');
+  setDisabled(true);
+
+  try {
+    const response = await fetch(`/api/samples/${filename}/process`, {
+      method: 'POST'
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.detail || 'Failed to process sample.');
+    }
+
+    const result = await response.json();
+    await fetchFiles();
+    await selectFile(result.filename);
+  } catch (error) {
+    setState('welcome');
+    showError(error.message);
+  } finally {
+    setDisabled(false);
+  }
+}
