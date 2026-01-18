@@ -43,7 +43,19 @@ async function fetchFiles() {
   try {
     const response = await fetch('/api/files');
     const files = await response.json();
-    renderFileList(files);
+    
+    // Restore selected file from local storage if available
+    const storedFile = localStorage.getItem('selectedFile');
+    if (storedFile && files.some(f => f.name === storedFile)) {
+        selectedFile = storedFile;
+        // Don't auto-select/fetch content yet, just highlight in list
+        // Or if we want to restore the view state, we'd call selectFile(storedFile)
+        // But let's just highlight it for now to match typical "back" behavior logic or fully restore
+        // The prompt implies "state ... is gone", so let's fully restore if present.
+        selectFile(storedFile); 
+    } else {
+        renderFileList(files);
+    }
   } catch (error) {
     console.error('Failed to fetch files:', error);
   }
@@ -73,6 +85,7 @@ function renderFileList(files) {
 
 async function selectFile(filename) {
   selectedFile = filename;
+  localStorage.setItem('selectedFile', filename);
   
   try {
     const filesResponse = await fetch('/api/files');
@@ -143,6 +156,7 @@ async function deleteFile(event, filename) {
     if (response.ok) {
       if (selectedFile === filename) {
         selectedFile = null;
+        localStorage.removeItem('selectedFile');
         setState('welcome');
       }
       fetchFiles();

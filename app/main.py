@@ -34,7 +34,7 @@ templates = Jinja2Templates(
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
-    deps_history = os.environ.get("DEPS_HISTORY", "1")
+    deps_history = os.environ.get("DEPS_HISTORY", "0")
     return templates.TemplateResponse(
         "index.html", {"request": request, "deps_history": deps_history}
     )
