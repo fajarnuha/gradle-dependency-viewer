@@ -38,7 +38,7 @@ templates = Jinja2Templates(
 def index(request: Request) -> HTMLResponse:
     deps_history = os.environ.get("DEPS_HISTORY", "1")
     return templates.TemplateResponse(
-        "index.html", {"request": request, "deps_history": deps_history}
+        request=request, name="index.html", context={"deps_history": deps_history}
     )
 
 
@@ -92,8 +92,9 @@ async def graph_viewer(
             traceback.print_exc()
 
     return templates.TemplateResponse(
-        "graph_viewer.html",
-        {"request": request, "graph_data": graph_data, "file_name": file},
+        request=request,
+        name="graph_viewer.html",
+        context={"graph_data": graph_data, "file_name": file},
     )
 
 
@@ -136,8 +137,9 @@ async def tree_viewer(
                 print(f"Error processing tree data: {e}")
 
     return templates.TemplateResponse(
-        "tree_viewer.html",
-        {"request": request, "tree_data": tree_data, "file_name": file},
+        request=request,
+        name="tree_viewer.html",
+        context={"tree_data": tree_data, "file_name": file},
     )
 
 
