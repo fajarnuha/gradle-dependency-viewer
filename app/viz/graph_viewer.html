@@ -503,30 +503,78 @@
                 .on('contextmenu', function (event, d) {
                     event.preventDefault(); // Prevent default context menu
 
-                    // Remove node from data
+                    // 1. Identify connected links to remove
+                    const linksToRemove = link.filter(l => l.source.id === d.id || l.target.id === d.id);
+                    
+                    // 2. Animate node and connected links out
+                    const duration = 500;
+                    
+                    d3.select(this)
+                        .transition()
+                        .duration(duration)
+                        .attr('r', 0)
+                        .style('opacity', 0)
+                        .remove(); // Remove from DOM after transition
+
+                    linksToRemove
+                        .transition()
+                        .duration(duration)
+                        .style('opacity', 0)
+                        .remove(); // Remove from DOM after transition
+
+                    // 3. Remove from data structures after animation starts
+                    // We rely on the index in the original data array for splicing
                     const nodeIndex = data.nodes.findIndex(n => n.id === d.id);
-                    if (nodeIndex !== -1) {
+                    if (nodeIndex > -1) {
                         data.nodes.splice(nodeIndex, 1);
                     }
 
-                    // Remove all edges connected to this node
-                    data.edges = data.edges.filter(edge => {
+                    // Remove edges from data
+                    const remainingEdges = [];
+                    for (let i = 0; i < data.edges.length; i++) {
+                        const edge = data.edges[i];
                         const sourceId = edge.source.id || edge.source;
                         const targetId = edge.target.id || edge.target;
-                        return sourceId !== d.id && targetId !== d.id;
-                    });
+                        
+                        if (sourceId !== d.id && targetId !== d.id) {
+                            remainingEdges.push(edge);
+                        }
+                    }
+                    data.edges = remainingEdges;
 
-                    // Update metadata
-                    data.metadata.total_nodes = data.nodes.length;
-                    data.metadata.total_edges = data.edges.length;
-
-                    // Update stats display
+                    // 4. Update stats immediately
                     document.getElementById('total-nodes').textContent = data.nodes.length;
                     document.getElementById('total-edges').textContent = data.edges.length;
                     document.getElementById('visible-nodes').textContent = data.nodes.length;
 
-                    // Recreate the visualization with updated data
-                    createVisualization(data);
+                    // 5. Update simulation with new data
+                    // We need to re-bind the data to the d3 selection variables 'node' and 'link'
+                    // so that future interactions (like drag or search) work on the updated set.
+                    // However, since we manually removed the DOM elements, we just need to update the simulation's reference.
+                    
+                    simulation.nodes(data.nodes);
+                    simulation.force("link").links(data.edges);
+                    
+                    // Restart simulation gently to fill the void
+                    simulation.alpha(0.3).restart();
+
+                    // Update the global references for subsequent interactions
+                    // Filter the existing D3 selections to exclude the removed elements
+                    // Note: 'remove()' inside transition above handles the DOM, 
+                    // but we should ideally update the D3 selection variables 'node' and 'link'
+                    // for other features like search filtering to work correctly without errors.
+                    currentVisualization.node = currentVisualization.node.filter(n => n.id !== d.id);
+                    currentVisualization.link = currentVisualization.link.filter(l => {
+                        const s = l.source.id || l.source;
+                        const t = l.target.id || l.target;
+                        return s !== d.id && t !== d.id;
+                    });
+                    
+                    // Re-assign to local variables if needed by closures, though closures mostly use 'data'
+                    // The 'node' and 'link' variables in this scope won't update, 
+                    // but 'currentVisualization.node' is what we might use globally if refactored.
+                    // For this scope's event listeners (drag, mouseover), they are attached to the DOM elements.
+                    // Since the DOM element is removed, its listeners go with it.
                 });
 
             // Update positions on simulation tick
