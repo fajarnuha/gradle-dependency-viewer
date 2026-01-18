@@ -4,7 +4,7 @@ Do the following task, your job is to finalize the project for github action dep
 
 - Use @sripts/up_version to increment the version
 - Check the python project is built successfully, Fix if there is minor issue, abort and tell me when there is a major issue
-- Stage and commit if there is any change
+- Stage and commit if there is any change including the updated screenshot
 - Add git tag with 'v' prefix followed by version already in pyproject.toml
 - Push to the github
 
