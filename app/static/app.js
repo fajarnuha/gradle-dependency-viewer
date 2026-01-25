@@ -213,6 +213,13 @@ dropZone.addEventListener('click', () => {
   fileInput.click();
 });
 
+dropZone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    fileInput.click();
+  }
+});
+
 ['dragover', 'dragleave', 'dragend'].forEach(type => {
   dropZone.addEventListener(type, (e) => {
     e.preventDefault();

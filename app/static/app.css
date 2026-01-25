@@ -113,6 +113,13 @@ body {
   background: #eff6ff;
 }
 
+.drop-zone:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-color: var(--primary);
+  background: #eff6ff;
+}
+
 .drop-zone__prompt {
   font-weight: 500;
   color: var(--text-muted);
