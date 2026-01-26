@@ -73,7 +73,7 @@ function renderFileList(files) {
     <li class="file-item ${selectedFile === file.name ? 'active' : ''}" data-name="${file.name}">
       <span class="file-name" title="${file.name}">${file.name}</span>
       <div class="file-actions">
-        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file">×</button>
+        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}"><span aria-hidden="true">×</span></button>
       </div>
     </li>
   `).join('');
