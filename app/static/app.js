@@ -73,7 +73,9 @@ function renderFileList(files) {
     <li class="file-item ${selectedFile === file.name ? 'active' : ''}" data-name="${file.name}">
       <span class="file-name" title="${file.name}">${file.name}</span>
       <div class="file-actions">
-        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file">×</button>
+        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" aria-label="Delete ${file.name}">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
     </li>
   `).join('');
@@ -151,6 +153,14 @@ async function deleteFile(event, filename) {
   event.stopPropagation();
   if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
 
+  const btn = event.target.closest('button');
+  const originalContent = btn ? btn.innerHTML : '';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-sm" aria-hidden="true"></span><span class="sr-only">Deleting...</span>';
+  }
+
   try {
     const response = await fetch(`/api/files/${filename}`, { method: 'DELETE' });
     if (response.ok) {
@@ -160,9 +170,18 @@ async function deleteFile(event, filename) {
         setState('welcome');
       }
       fetchFiles();
+    } else {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+      }
     }
   } catch (error) {
     console.error('Failed to delete file:', error);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalContent;
+    }
   }
 }
 
