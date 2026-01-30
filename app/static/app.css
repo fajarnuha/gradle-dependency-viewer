@@ -290,23 +290,43 @@ body {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-item-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .file-item {
+  flex-grow: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color 0.2s, transform 0.1s;
-  margin-bottom: 4px;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: transparent;
+  border: 1px solid transparent;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  min-width: 0; /* Enable text truncation in flex child */
 }
 
 .file-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateX(4px);
+  background-color: #f1f5f9;
+  transform: translateX(2px);
+}
+
+.file-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  background-color: #f1f5f9;
 }
 
 .file-item.active {
@@ -314,16 +334,17 @@ body {
   color: white;
 }
 
+.file-item.active:focus-visible {
+  outline-color: white;
+  outline-offset: 2px;
+}
+
 .file-item .file-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 0.9rem;
-}
-
-.file-actions {
-  display: flex;
-  gap: 4px;
+  width: 100%;
 }
 
 .delete-btn {
@@ -332,18 +353,25 @@ body {
   color: #ff4444;
   font-size: 1.2rem;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 8px;
   line-height: 1;
   opacity: 0.5;
   transition: opacity 0.2s;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .delete-btn:hover {
   opacity: 1;
+  background-color: #fee2e2;
 }
 
-.file-item.active .delete-btn {
-  color: white;
+.delete-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  opacity: 1;
 }
 
 .empty-list {
