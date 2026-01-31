@@ -145,6 +145,17 @@
     </div>
   </main>
 
+  <dialog id="delete-confirm-dialog" class="confirm-dialog">
+    <form method="dialog">
+      <h2 id="dialog-title">Delete File?</h2>
+      <p id="dialog-desc">Are you sure you want to delete <strong id="delete-filename"></strong>? This action cannot be undone.</p>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary-btn">Cancel</button>
+        <button id="confirm-delete-btn" value="confirm" class="primary-btn delete-action-btn">Delete</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="/static/app.js"></script>
 </body>
 
