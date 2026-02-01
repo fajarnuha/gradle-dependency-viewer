@@ -294,11 +294,10 @@ body {
 
 .file-item {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
-  padding: var(--space-sm) var(--space-md);
+  padding: 0;
   border-radius: var(--radius-sm);
-  cursor: pointer;
   transition: background-color 0.2s, transform 0.1s;
   margin-bottom: 4px;
   background-color: rgba(255, 255, 255, 0.05);
@@ -314,6 +313,33 @@ body {
   color: white;
 }
 
+.file-select-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  flex-grow: 1;
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.file-select-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.file-item.active .file-select-btn:focus-visible {
+  outline-color: white;
+}
+
 .file-item .file-name {
   white-space: nowrap;
   overflow: hidden;
@@ -323,6 +349,8 @@ body {
 
 .file-actions {
   display: flex;
+  align-items: center;
+  padding-right: var(--space-sm);
   gap: 4px;
 }
 
