@@ -309,6 +309,12 @@ body {
   transform: translateX(4px);
 }
 
+.file-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 .file-item.active {
   background-color: var(--primary);
   color: white;
@@ -338,12 +344,23 @@ body {
   transition: opacity 0.2s;
 }
 
-.delete-btn:hover {
+.delete-btn:hover,
+.delete-btn:focus-visible {
   opacity: 1;
+}
+
+.delete-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .file-item.active .delete-btn {
   color: white;
+}
+
+.file-item.active .delete-btn:focus-visible {
+  outline-color: white;
 }
 
 .empty-list {
