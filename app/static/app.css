@@ -374,7 +374,8 @@ body {
   transition: opacity 0.2s, background-color 0.2s;
 }
 
-.delete-btn:hover {
+.delete-btn:hover,
+.delete-btn:focus-visible {
   opacity: 1;
   background-color: rgba(220, 38, 38, 0.1);
 }
@@ -384,6 +385,10 @@ body {
   outline-offset: -2px;
   opacity: 1;
   z-index: 1;
+}
+
+.file-item.active .delete-btn:focus-visible {
+  outline-color: white;
 }
 
 .empty-list {
