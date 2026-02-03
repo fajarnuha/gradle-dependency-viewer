@@ -74,17 +74,19 @@ function renderFileList(files) {
   }
 
   fileList.innerHTML = files.map(file => `
-    <li class="file-item ${selectedFile === file.name ? 'active' : ''}" data-name="${file.name}">
-      <span class="file-name" title="${file.name}">${file.name}</span>
+    <li class="file-item ${selectedFile === file.name ? 'active' : ''}">
+      <button class="file-select-btn" onclick="selectFile('${file.name}')" aria-label="Select ${file.name}">
+        <span class="file-name" title="${file.name}">${file.name}</span>
+      </button>
       <div class="file-actions">
-        <button class="delete-btn" onclick="showDeleteDialog(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}">×</button>
+<<<<<<< HEAD
+        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" aria-label="Delete ${file.name}">×</button>
+=======
+        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}"><span aria-hidden="true">×</span></button>
+>>>>>>> origin/main
       </div>
     </li>
   `).join('');
-
-  fileList.querySelectorAll('.file-item').forEach(item => {
-    item.addEventListener('click', () => selectFile(item.dataset.name));
-  });
 }
 
 async function selectFile(filename) {
