@@ -6,6 +6,8 @@
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --secondary: #64748b;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
   --bg-card: #ffffff;
   --bg-page: #f8fafc;
   --border-color: #e2e8f0;
@@ -290,22 +292,57 @@ body {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-item-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .file-item {
+  flex-grow: 1;
   display: flex;
   align-items: stretch;
-  justify-content: space-between;
   padding: 0;
   border-radius: var(--radius-sm);
   transition: background-color 0.2s, transform 0.1s;
   margin-bottom: 4px;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: #f1f5f9;
+  transition: background-color 0.2s, transform 0.1s;
+  overflow: hidden;
 }
 
 .file-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #e2e8f0;
   transform: translateX(4px);
+}
+
+.file-select-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  flex-grow: 1;
+  min-width: 0; /* for text-overflow to work */
+  display: flex;
+  align-items: center;
+}
+
+.file-select-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.file-item.active .file-select-btn:focus-visible {
+  outline-color: #ffffff;
 }
 
 .file-item.active {
@@ -313,45 +350,15 @@ body {
   color: white;
 }
 
-.file-select-btn {
-  appearance: none;
-  background: transparent;
-  border: none;
-  text-align: left;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-  flex-grow: 1;
-  padding: var(--space-sm) var(--space-md);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  min-width: 0;
+.file-select-btn.active:focus-visible {
+  outline-color: #ffffff;
 }
 
-.file-select-btn:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
-}
-
-.file-item.active .file-select-btn:focus-visible {
-  outline-color: white;
-}
-
-.file-item .file-name {
+.file-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 0.9rem;
-}
-
-.file-actions {
-  display: flex;
-  align-items: center;
-  padding-right: var(--space-sm);
-  gap: 4px;
+  width: 100%;
 }
 
 .delete-btn {
@@ -360,18 +367,23 @@ body {
   color: #ff4444;
   font-size: 1.2rem;
   cursor: pointer;
-  padding: 0 4px;
-  line-height: 1;
+  padding: 0 var(--space-md);
+  display: flex;
+  align-items: center;
   opacity: 0.5;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, background-color 0.2s;
 }
 
 .delete-btn:hover {
   opacity: 1;
+  background-color: rgba(220, 38, 38, 0.1);
 }
 
-.file-item.active .delete-btn {
-  color: white;
+.delete-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  opacity: 1;
+  z-index: 1;
 }
 
 .empty-list {
@@ -470,6 +482,70 @@ body {
   background-color: #e2e8f0;
   color: #1e293b;
   border-color: #cbd5e1;
+}
+
+/* Dialog Styles */
+#delete-confirm-dialog {
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 400px;
+  width: 90%;
+}
+
+#delete-confirm-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+#delete-confirm-dialog[open] {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+#delete-confirm-dialog form {
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+#delete-confirm-dialog h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-main);
+}
+
+#delete-confirm-dialog p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+}
+
+.delete-action-btn {
+  background-color: var(--danger);
+}
+
+.delete-action-btn:hover {
+  background-color: var(--danger-hover);
 }
 
 @media (max-width: 900px) {
