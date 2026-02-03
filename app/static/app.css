@@ -297,6 +297,7 @@ body {
   align-items: stretch;
   padding: 0;
   border-radius: var(--radius-sm);
+  transition: background-color 0.2s, transform 0.1s;
   margin-bottom: 4px;
   background-color: #f1f5f9;
   transition: background-color 0.2s, transform 0.1s;
@@ -309,28 +310,30 @@ body {
 }
 
 .file-select-btn {
-  appearance: none;
   background: none;
   border: none;
-  flex: 1;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  flex-grow: 1;
+  min-width: 0; /* for text-overflow to work */
   display: flex;
   align-items: center;
-  padding: var(--space-sm) var(--space-md);
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  min-width: 0;
 }
 
 .file-select-btn:focus-visible {
   outline: 2px solid var(--primary);
-  outline-offset: -2px;
-  z-index: 1;
+  outline-offset: 1px;
+  border-radius: 2px;
 }
 
-.file-select-btn.active {
+.file-item.active .file-select-btn:focus-visible {
+  outline-color: #ffffff;
+}
+
+.file-item.active {
   background-color: var(--primary);
   color: white;
 }
