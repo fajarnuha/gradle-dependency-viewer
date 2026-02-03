@@ -74,20 +74,37 @@ function renderFileList(files) {
   }
 
   fileList.innerHTML = files.map(file => `
-    <li class="file-item ${selectedFile === file.name ? 'active' : ''}">
-      <button class="file-select-btn" onclick="selectFile('${file.name}')" aria-label="Select ${file.name}">
+    <li class="file-item ${selectedFile === file.name ? 'active' : ''}" data-filename="${file.name}">
+      <button class="file-select-btn" type="button" aria-label="Select ${file.name}">
         <span class="file-name" title="${file.name}">${file.name}</span>
       </button>
       <div class="file-actions">
-<<<<<<< HEAD
-        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" aria-label="Delete ${file.name}">×</button>
-=======
-        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}"><span aria-hidden="true">×</span></button>
->>>>>>> origin/main
+        <button class="delete-btn" type="button" title="Delete file" aria-label="Delete ${file.name}">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
     </li>
   `).join('');
 }
+
+if (fileList) {
+  fileList.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+
+    const li = btn.closest('.file-item');
+    if (!li || !li.dataset.filename) return;
+
+    const filename = li.dataset.filename;
+
+    if (btn.classList.contains('delete-btn')) {
+        showDeleteDialog(e, filename);
+    } else if (btn.classList.contains('file-select-btn')) {
+        selectFile(filename);
+    }
+  });
+}
+
 
 async function selectFile(filename) {
   selectedFile = filename;
