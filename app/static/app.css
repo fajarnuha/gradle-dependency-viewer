@@ -304,29 +304,43 @@ body {
 .file-item {
   flex-grow: 1;
   display: flex;
-  align-items: center;
-  padding: var(--space-sm) var(--space-md);
+  align-items: stretch;
+  padding: 0;
   border-radius: var(--radius-sm);
-  cursor: pointer;
   transition: background-color 0.2s, transform 0.1s;
-  background-color: transparent;
-  border: 1px solid transparent;
-  text-align: left;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-  min-width: 0; /* Enable text truncation in flex child */
+  margin-bottom: 4px;
+  background-color: #f1f5f9;
+  transition: background-color 0.2s, transform 0.1s;
+  overflow: hidden;
 }
 
 .file-item:hover {
-  background-color: #f1f5f9;
-  transform: translateX(2px);
+  background-color: #e2e8f0;
+  transform: translateX(4px);
 }
 
-.file-item:focus-visible {
+.file-select-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  flex-grow: 1;
+  min-width: 0; /* for text-overflow to work */
+  display: flex;
+  align-items: center;
+}
+
+.file-select-btn:focus-visible {
   outline: 2px solid var(--primary);
-  outline-offset: -2px;
-  background-color: #f1f5f9;
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.file-item.active .file-select-btn:focus-visible {
+  outline-color: #ffffff;
 }
 
 .file-item.active {
@@ -334,16 +348,14 @@ body {
   color: white;
 }
 
-.file-item.active:focus-visible {
-  outline-color: white;
-  outline-offset: 2px;
+.file-select-btn.active:focus-visible {
+  outline-color: #ffffff;
 }
 
-.file-item .file-name {
+.file-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 0.9rem;
   width: 100%;
 }
 
@@ -353,25 +365,23 @@ body {
   color: #ff4444;
   font-size: 1.2rem;
   cursor: pointer;
-  padding: 8px;
-  line-height: 1;
-  opacity: 0.5;
-  transition: opacity 0.2s;
-  border-radius: var(--radius-sm);
+  padding: 0 var(--space-md);
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.2s, background-color 0.2s;
 }
 
 .delete-btn:hover {
   opacity: 1;
-  background-color: #fee2e2;
+  background-color: rgba(220, 38, 38, 0.1);
 }
 
 .delete-btn:focus-visible {
   outline: 2px solid var(--primary);
+  outline-offset: -2px;
   opacity: 1;
+  z-index: 1;
 }
 
 .empty-list {
