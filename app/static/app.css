@@ -298,7 +298,6 @@ body {
   justify-content: space-between;
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-sm);
-  cursor: pointer;
   transition: background-color 0.2s, transform 0.1s;
   margin-bottom: 4px;
   background-color: rgba(255, 255, 255, 0.05);
@@ -307,6 +306,30 @@ body {
 .file-item:hover {
   background-color: rgba(255, 255, 255, 0.1);
   transform: translateX(4px);
+}
+
+.file-select-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  flex-grow: 1;
+  min-width: 0; /* for text-overflow to work */
+  display: flex;
+  align-items: center;
+}
+
+.file-select-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.file-item.active .file-select-btn:focus-visible {
+  outline-color: #ffffff;
 }
 
 .file-item.active {
