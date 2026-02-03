@@ -75,7 +75,11 @@ function renderFileList(files) {
         <span class="file-name" title="${file.name}">${file.name}</span>
       </button>
       <div class="file-actions">
+<<<<<<< HEAD
         <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" aria-label="Delete ${file.name}">×</button>
+=======
+        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}"><span aria-hidden="true">×</span></button>
+>>>>>>> origin/main
       </div>
     </li>
   `).join('');
