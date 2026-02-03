@@ -14,8 +14,12 @@ const enlistBtn = document.getElementById('enlist-btn');
 const currentFileName = document.getElementById('current-file-name');
 const txtPanel = document.getElementById('txt-panel');
 const resultsGrid = document.querySelector('.results-grid');
+const deleteConfirmDialog = document.getElementById('delete-confirm-dialog');
+const deleteFilenameEl = document.getElementById('delete-filename');
+const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 
 let selectedFile = null;
+let fileToDelete = null;
 
 function setState(state) {
   welcomeState.classList.toggle('hidden', state !== 'welcome');
@@ -70,27 +74,19 @@ function renderFileList(files) {
   }
 
   fileList.innerHTML = files.map(file => `
-    <li class="file-item ${selectedFile === file.name ? 'active' : ''}"
-        data-name="${file.name}"
-        tabindex="0"
-        aria-selected="${selectedFile === file.name}">
-      <span class="file-name" title="${file.name}">${file.name}</span>
+    <li class="file-item ${selectedFile === file.name ? 'active' : ''}">
+      <button class="file-select-btn" onclick="selectFile('${file.name}')" aria-label="Select ${file.name}">
+        <span class="file-name" title="${file.name}">${file.name}</span>
+      </button>
       <div class="file-actions">
-        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}">×</button>
+<<<<<<< HEAD
+        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" aria-label="Delete ${file.name}">×</button>
+=======
+        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}"><span aria-hidden="true">×</span></button>
+>>>>>>> origin/main
       </div>
     </li>
   `).join('');
-
-  fileList.querySelectorAll('.file-item').forEach(item => {
-    item.addEventListener('click', () => selectFile(item.dataset.name));
-    item.addEventListener('keydown', (e) => {
-      if (e.target !== item) return;
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        selectFile(item.dataset.name);
-      }
-    });
-  });
 }
 
 async function selectFile(filename) {
@@ -157,10 +153,18 @@ async function selectFile(filename) {
   }
 }
 
-async function deleteFile(event, filename) {
+function showDeleteDialog(event, filename) {
   event.stopPropagation();
-  if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
+  fileToDelete = filename;
+  deleteFilenameEl.textContent = filename;
+  deleteConfirmDialog.showModal();
+}
 
+// Handle dialog confirm button
+confirmDeleteBtn.addEventListener('click', async () => {
+  if (!fileToDelete) return;
+
+  const filename = fileToDelete;
   try {
     const response = await fetch(`/api/files/${filename}`, { method: 'DELETE' });
     if (response.ok) {
@@ -173,8 +177,17 @@ async function deleteFile(event, filename) {
     }
   } catch (error) {
     console.error('Failed to delete file:', error);
+    showError(`Failed to delete ${filename}`);
+  } finally {
+    fileToDelete = null;
+    // Dialog closes automatically due to form method="dialog"
   }
-}
+});
+
+// Handle dialog cancel/close
+deleteConfirmDialog.addEventListener('close', () => {
+  fileToDelete = null;
+});
 
 async function handleUpload(file) {
   clearError();
