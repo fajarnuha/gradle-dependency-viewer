@@ -16,3 +16,7 @@
 ## 2025-01-28 - Interactive List Items
 **Learning:** List items (`li`) with `click` handlers are not keyboard-accessible by default. Converting them to contain a full-width `<button>` element is the most robust way to ensure accessibility (focus, Enter/Space support) without reimplementing button behavior on `div`s or `li`s.
 **Action:** Always prefer native `<button>` elements for interactive list items, using CSS to reset styles and make them fill the container.
+
+## 2026-02-05 - Focus Management After Deletion
+**Learning:** When deleting an item from a list, focus is often lost (reverts to body) when the element is removed from DOM. This disrupts keyboard users.
+**Action:** Always capture the index of the item before deletion, and programmatically restore focus to the nearest neighbor (or a logical fallback container) after the list re-renders.
