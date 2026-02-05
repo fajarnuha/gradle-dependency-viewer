@@ -20,6 +20,7 @@ const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 
 let selectedFile = null;
 let fileToDelete = null;
+let lastDeletedIndex = -1;
 
 function setState(state) {
   welcomeState.classList.toggle('hidden', state !== 'welcome');
@@ -79,11 +80,7 @@ function renderFileList(files) {
         <span class="file-name" title="${file.name}">${file.name}</span>
       </button>
       <div class="file-actions">
-<<<<<<< HEAD
-        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" aria-label="Delete ${file.name}">×</button>
-=======
-        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}"><span aria-hidden="true">×</span></button>
->>>>>>> origin/main
+        <button class="delete-btn" onclick="showDeleteDialog(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}"><span aria-hidden="true">×</span></button>
       </div>
     </li>
   `).join('');
@@ -155,6 +152,10 @@ async function selectFile(filename) {
 
 function showDeleteDialog(event, filename) {
   event.stopPropagation();
+  const li = event.target.closest('li');
+  if (fileList && li) {
+    lastDeletedIndex = Array.from(fileList.children).indexOf(li);
+  }
   fileToDelete = filename;
   deleteFilenameEl.textContent = filename;
   deleteConfirmDialog.showModal();
@@ -173,7 +174,24 @@ confirmDeleteBtn.addEventListener('click', async () => {
         localStorage.removeItem('selectedFile');
         setState('welcome');
       }
-      fetchFiles();
+      await fetchFiles();
+
+      // Restore focus
+      if (lastDeletedIndex !== -1 && fileList) {
+        const items = fileList.children;
+        // Check if items contain actual list items, not empty-list
+        const hasItems = items.length > 0 && !items[0].classList.contains('empty-list');
+
+        if (hasItems) {
+          const targetIndex = Math.min(lastDeletedIndex, items.length - 1);
+          const targetLi = items[targetIndex];
+          const btn = targetLi.querySelector('.file-select-btn');
+          if (btn) btn.focus();
+        } else {
+           dropZone.focus();
+        }
+      }
+      lastDeletedIndex = -1;
     }
   } catch (error) {
     console.error('Failed to delete file:', error);
