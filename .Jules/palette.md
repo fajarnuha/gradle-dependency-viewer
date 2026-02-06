@@ -16,3 +16,7 @@
 ## 2025-01-28 - Interactive List Items
 **Learning:** List items (`li`) with `click` handlers are not keyboard-accessible by default. Converting them to contain a full-width `<button>` element is the most robust way to ensure accessibility (focus, Enter/Space support) without reimplementing button behavior on `div`s or `li`s.
 **Action:** Always prefer native `<button>` elements for interactive list items, using CSS to reset styles and make them fill the container.
+
+## 2026-02-06 - Native Dialogs
+**Learning:** The native `<dialog>` element combined with `form method="dialog"` provides a robust, accessible, and JavaScript-light way to handle modal confirmations. It manages focus trap and return focus automatically when properly implemented.
+**Action:** Prefer `<dialog>` over custom modal implementations for confirmation interactions.
