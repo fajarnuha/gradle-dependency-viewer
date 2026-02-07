@@ -16,3 +16,7 @@
 ## 2025-01-28 - Interactive List Items
 **Learning:** List items (`li`) with `click` handlers are not keyboard-accessible by default. Converting them to contain a full-width `<button>` element is the most robust way to ensure accessibility (focus, Enter/Space support) without reimplementing button behavior on `div`s or `li`s.
 **Action:** Always prefer native `<button>` elements for interactive list items, using CSS to reset styles and make them fill the container.
+
+## 2025-01-29 - Event Handler Verification
+**Learning:** When resolving merge conflicts or refactoring, always verify that the function names in `onclick` handlers (or other event listeners) match the actual function definitions in the JavaScript file. Mismatches can lead to broken functionality that is not caught by static analysis.
+**Action:** Double-check event handler function names against the codebase during conflict resolution or refactoring.
