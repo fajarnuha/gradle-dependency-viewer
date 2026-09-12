@@ -5,719 +5,2319 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dependency Graph Viewer</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
     <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-muted: #f1f5f9;
+            --border: #e2e8f0;
+            --border-strong: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --text-faint: #94a3b8;
+            --primary: #2563eb;
+            --primary-soft: #eff6ff;
+            --edge: #94a3b8;
+            --edge-out: #2563eb;
+            --edge-in: #d97706;
+            --edge-path: #e11d48;
+            --c-root: #0f172a;
+            --c-project: #10b981;
+            --c-android: #f59e0b;
+            --c-kotlin: #8b5cf6;
+            --c-external: #3b82f6;
+            --radius-lg: 14px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --shadow: 0 10px 25px -8px rgba(15, 23, 42, 0.18), 0 2px 6px -2px rgba(15, 23, 42, 0.08);
+            --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
         body {
             margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+            font-size: 14px;
+            color: var(--text-main);
+            background: var(--bg-page);
             overflow: hidden;
         }
 
-        .container {
+        button,
+        input,
+        select {
+            font: inherit;
+            color: inherit;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .app {
             display: flex;
             height: 100vh;
         }
 
+        /* ---------- Sidebar ---------- */
         .sidebar {
-            width: 300px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            width: 320px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
             padding: 20px;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
             overflow-y: auto;
+            z-index: 20;
         }
 
-        .main-content {
-            flex: 1;
-            position: relative;
+        .sidebar-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .back-link {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color .15s, border-color .15s, background-color .15s;
+        }
+
+        .back-link:hover,
+        .back-link:focus-visible {
+            color: var(--primary);
+            border-color: var(--primary);
+            background: var(--primary-soft);
+            outline: none;
         }
 
         h1 {
-            margin: 0 0 20px 0;
-            color: #333;
-            font-size: 24px;
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .file-name {
+            margin: 2px 0 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        .banner {
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid #fcd34d;
+            background: #fffbeb;
+            color: #92400e;
+            font-size: 13px;
+        }
+
+        .banner a {
+            color: inherit;
             font-weight: 600;
-        }
-
-        .controls {
-            margin-bottom: 20px;
-        }
-
-        .control-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            color: #555;
-        }
-
-        input[type="text"],
-        input[type="range"],
-        textarea {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        textarea {
-            resize: vertical;
-            font-family: 'Courier New', monospace;
-            min-height: 120px;
-        }
-
-        input[type="range"] {
-            padding: 0;
         }
 
         .stats {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
         }
 
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
+        .stat {
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            background: var(--bg-muted);
         }
 
         .stat-label {
-            font-weight: 500;
-            color: #666;
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
         }
 
         .stat-value {
+            display: block;
+            margin-top: 2px;
+            font-size: 20px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .section-title {
+            margin: 0 0 10px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            color: var(--text-faint);
+            pointer-events: none;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 9px 44px 9px 34px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            background: var(--bg-card);
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .search-box kbd {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        kbd {
+            display: inline-block;
+            min-width: 20px;
+            padding: 1px 5px;
+            border: 1px solid var(--border-strong);
+            border-bottom-width: 2px;
+            border-radius: 4px;
+            background: var(--bg-muted);
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .search-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 26px;
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .search-nav {
+            display: flex;
+            gap: 4px;
+        }
+
+        .mini-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .mini-btn:hover:not(:disabled) {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .mini-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .control {
+            margin-bottom: 12px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .control-label output {
+            font-variant-numeric: tabular-nums;
+            color: var(--text-main);
             font-weight: 600;
-            color: #333;
         }
 
-        .node-info {
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 20px;
-            display: none;
+        input[type="range"] {
+            width: 100%;
+            margin: 0;
+            accent-color: var(--primary);
         }
 
-        .node-info h3 {
-            margin: 0 0 10px 0;
-            color: #333;
-            font-size: 16px;
+        .segmented {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: 1fr;
+            padding: 3px;
+            gap: 3px;
+            border-radius: var(--radius-md);
+            background: var(--bg-muted);
         }
 
-        .node-info p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: #666;
+        .segmented button {
+            padding: 5px 6px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .segmented button[aria-pressed="true"] {
+            background: var(--bg-card);
+            color: var(--text-main);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+        }
+
+        .segmented button:focus-visible,
+        .legend-item:focus-visible,
+        .mini-btn:focus-visible,
+        .tool-btn:focus-visible,
+        .chip:focus-visible,
+        .link-btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 1px;
+        }
+
+        .check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .check input {
+            accent-color: var(--primary);
         }
 
         .legend {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            margin-bottom: 8px;
+            gap: 10px;
+            width: 100%;
+            padding: 6px 8px;
+            border: 0;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color .15s, opacity .15s;
         }
 
-        .legend-color {
-            width: 16px;
-            height: 16px;
+        .legend-item:hover {
+            background: var(--bg-muted);
+        }
+
+        .legend-item[aria-pressed="false"] {
+            opacity: 0.4;
+        }
+
+        .legend-swatch {
+            flex-shrink: 0;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            margin-right: 10px;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--border);
+        }
+
+        .legend-swatch.ring {
+            background: transparent;
+            box-shadow: none;
+            border: 2px dashed var(--text-muted);
         }
 
         .legend-label {
-            font-size: 14px;
-            color: #666;
+            flex: 1;
+            font-size: 13px;
+        }
+
+        .legend-count {
+            font-size: 12px;
+            color: var(--text-faint);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .legend-static {
+            cursor: default;
+        }
+
+        .legend-static:hover {
+            background: transparent;
+        }
+
+        .shortcuts {
+            margin: auto 0 0;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 6px 10px;
+            font-size: 12px;
+            color: var(--text-muted);
+            align-items: center;
+        }
+
+        /* ---------- Canvas ---------- */
+        .canvas {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+            background-color: var(--bg-page);
+            background-image: radial-gradient(circle, #dbe3ee 1px, transparent 1px);
+            background-size: 22px 22px;
         }
 
         #graph {
+            display: block;
             width: 100%;
             height: 100%;
             cursor: grab;
+            user-select: none;
         }
 
         #graph:active {
             cursor: grabbing;
         }
 
-        .node {
-            stroke: #fff;
-            stroke-width: 2px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        .band {
+            fill: #e2e8f0;
+            fill-opacity: 0.35;
         }
 
-        .node:hover {
-            stroke-width: 3px;
-            filter: brightness(1.2);
+        .band.odd {
+            fill-opacity: 0.18;
         }
 
+        .band-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            fill: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .band-count {
+            font-size: 11px;
+            font-weight: 500;
+            fill: var(--text-faint);
+        }
+
+        /* Edges */
         .link {
-            stroke: #999;
-            stroke-opacity: 0.6;
-            stroke-width: 1px;
+            fill: none;
+            stroke: var(--edge);
+            stroke-opacity: 0.28;
+            stroke-width: 1;
+            marker-end: url(#arrow);
+            transition: stroke-opacity .2s, stroke .2s;
         }
 
-        .link.highlighted {
-            stroke: #ff6b6b;
-            stroke-opacity: 0.8;
-            stroke-width: 2px;
+        .link.is-lateral {
+            stroke-dasharray: 3 3;
         }
 
-        .node.highlighted {
-            stroke: #ff6b6b;
-            stroke-width: 4px;
+        .has-focus .link,
+        .searching:not(.has-focus) .link {
+            stroke-opacity: 0.06;
+            marker-end: url(#arrow-faint);
         }
 
+        .has-focus .link.is-out {
+            stroke: var(--edge-out);
+            stroke-opacity: 0.85;
+            stroke-width: 1.5;
+            marker-end: url(#arrow-out);
+        }
+
+        .has-focus .link.is-in {
+            stroke: var(--edge-in);
+            stroke-opacity: 0.85;
+            stroke-width: 1.5;
+            marker-end: url(#arrow-in);
+        }
+
+        .link.is-path,
+        .has-focus .link.is-path {
+            stroke: var(--edge-path);
+            stroke-opacity: 1;
+            stroke-width: 2.25;
+            stroke-dasharray: none;
+            marker-end: url(#arrow-path);
+        }
+
+        .edges-hierarchy .link:not(.is-tree):not(.is-in):not(.is-out):not(.is-path),
+        .edges-focus .link:not(.is-in):not(.is-out):not(.is-path) {
+            display: none;
+        }
+
+        /* Nodes */
+        .node {
+            cursor: pointer;
+        }
+
+        .node .dot {
+            stroke: #fff;
+            stroke-width: 1.5;
+            transition: opacity .2s, stroke-width .15s;
+        }
+
+        .node .ring {
+            fill: none;
+            stroke: var(--text-muted);
+            stroke-width: 1.25;
+            stroke-dasharray: 2 2;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .node .focus-ring {
+            fill: none;
+            stroke-width: 2.5;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .15s;
+        }
+
+        .node text {
+            font-size: 11px;
+            font-weight: 500;
+            fill: var(--text-main);
+            paint-order: stroke;
+            stroke: var(--bg-page);
+            stroke-width: 3.5px;
+            stroke-linejoin: round;
+            pointer-events: none;
+            display: none;
+        }
+
+        .node.is-root text {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .labels-all .node text,
+        .labels-auto.zoomed-in .node text,
+        .labels-auto .node.level-0 text,
+        .labels-auto .node.is-match text,
+        .labels-auto .node.is-focus text,
+        .labels-auto .node.is-neighbor text,
+        .labels-none .node.is-focus text {
+            display: block;
+        }
+
+        .has-focus .node {
+            opacity: 0.18;
+        }
+
+        .has-focus .node.is-focus,
+        .has-focus .node.is-neighbor,
+        .has-focus .node.is-on-path {
+            opacity: 1;
+        }
+
+        .searching:not(.has-focus) .node:not(.is-match) {
+            opacity: 0.15;
+        }
+
+        .node.is-match .focus-ring {
+            stroke: #f59e0b;
+            opacity: 1;
+        }
+
+        .node.is-selected .focus-ring {
+            stroke: var(--edge-path);
+            opacity: 1;
+        }
+
+        .node.is-focus text {
+            font-weight: 700;
+        }
+
+        .node:hover .dot {
+            stroke-width: 2.5;
+        }
+
+        .node.is-dragging {
+            cursor: grabbing;
+        }
+
+        .hide-cat-project .node.cat-project,
+        .hide-cat-android .node.cat-android,
+        .hide-cat-kotlin .node.cat-kotlin,
+        .hide-cat-external .node.cat-external {
+            opacity: 0.06 !important;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 4px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow);
+            z-index: 10;
+        }
+
+        .toolbar hr {
+            width: 100%;
+            margin: 2px 0;
+            border: 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .tool-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: background-color .15s, color .15s;
+        }
+
+        .tool-btn:hover:not(:disabled) {
+            background: var(--bg-muted);
+            color: var(--primary);
+        }
+
+        .tool-btn:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+
+        .tool-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .tool-btn .badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            min-width: 15px;
+            height: 15px;
+            padding: 0 3px;
+            border-radius: 8px;
+            background: var(--edge-path);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 15px;
+        }
+
+        .sidebar-toggle {
+            display: none;
+        }
+
+        .zoom-indicator {
+            position: absolute;
+            left: 16px;
+            bottom: 16px;
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            pointer-events: none;
+        }
+
+        /* Details panel */
+        .details {
+            position: absolute;
+            top: 16px;
+            right: 66px;
+            width: 340px;
+            max-height: calc(100% - 32px);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--bg-card);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            z-index: 10;
+            animation: panel-in .18s ease-out;
+        }
+
+        @keyframes panel-in {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+        }
+
+        .details-header {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .details-header .legend-swatch {
+            margin-top: 5px;
+        }
+
+        .details-title {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .details-title h2 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .details-title p {
+            margin: 2px 0 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        .details-body {
+            padding: 12px 16px 16px;
+            overflow-y: auto;
+        }
+
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .badge-pill {
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--bg-muted);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .badge-pill.warn {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-pill.info {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .full-coord {
+            margin: 0 0 12px;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: var(--mono);
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .metric {
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-muted);
+            text-align: center;
+        }
+
+        .metric strong {
+            display: block;
+            font-size: 16px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .metric span {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .details-section {
+            margin-bottom: 14px;
+        }
+
+        .details-section h3 {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0 0 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        .details-section h3 i {
+            width: 10px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .path {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            max-width: 100%;
+            padding: 3px 8px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--bg-card);
+            font-size: 12px;
+            cursor: pointer;
+            transition: border-color .15s, background-color .15s;
+        }
+
+        .chip:hover {
+            border-color: var(--primary);
+            background: var(--primary-soft);
+        }
+
+        .chip span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chip .dot-sm {
+            flex-shrink: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .path .chip {
+            border-radius: var(--radius-sm);
+        }
+
+        .path-step {
+            padding-left: 10px;
+            font-size: 11px;
+            color: var(--text-faint);
+        }
+
+        .link-btn {
+            padding: 0;
+            border: 0;
+            background: none;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .muted {
+            font-size: 12px;
+            color: var(--text-faint);
+        }
+
+        .details-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-page);
+        }
+
+        .btn {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 7px 10px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color .15s, color .15s;
+        }
+
+        .btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn.danger:hover {
+            border-color: #dc2626;
+            color: #dc2626;
+        }
+
+        /* Tooltip */
         .tooltip {
             position: absolute;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
+            max-width: 320px;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            background: rgba(15, 23, 42, 0.94);
+            color: #f8fafc;
             font-size: 12px;
+            line-height: 1.45;
             pointer-events: none;
-            z-index: 1000;
-            max-width: 300px;
-            word-wrap: break-word;
+            z-index: 30;
+            box-shadow: var(--shadow);
+        }
+
+        .tooltip strong {
+            display: block;
+            font-size: 13px;
+        }
+
+        .tooltip .tt-sub {
+            color: #94a3b8;
+            word-break: break-all;
+        }
+
+        .tooltip .tt-row {
+            margin-top: 4px;
+            color: #cbd5e1;
+        }
+
+        .toast {
+            position: absolute;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: var(--text-main);
+            color: #fff;
+            font-size: 13px;
+            box-shadow: var(--shadow);
+            z-index: 40;
+        }
+
+        @media (max-width: 860px) {
+            .sidebar {
+                position: absolute;
+                inset: 0 auto 0 0;
+                width: min(320px, 88vw);
+                transform: translateX(-100%);
+                transition: transform .2s ease;
+                box-shadow: var(--shadow);
+            }
+
+            .app.sidebar-open .sidebar {
+                transform: none;
+            }
+
+            .sidebar-toggle {
+                display: inline-flex;
+            }
+
+            .details {
+                left: 16px;
+                right: 66px;
+                width: auto;
+                max-height: 55%;
+                top: auto;
+                bottom: 16px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation: none !important;
+                transition: none !important;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="sidebar">
-            <h1>Dependency Graph</h1>
-            <div id="no-data"
-                style="display: none; margin: 10px 0; padding: 10px; border-radius: 6px; border: 1px solid #f5c2c7; background: #f8d7da; color: #842029; font-size: 13px;">
-                No data found. Please upload a TXT first. <a href="/" style="color: #842029; font-weight: 600;">Go
-                    back</a>.
+    <div class="app" id="app">
+        <aside class="sidebar" id="sidebar" aria-label="Graph controls">
+            <header class="sidebar-header">
+                <a href="/" class="back-link" aria-label="Back to home" title="Back to home">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                </a>
+                <div>
+                    <h1>Dependency Graph</h1>
+                    <p class="file-name" id="file-name">{{ file_name or 'Sample data' }}</p>
+                </div>
+            </header>
+
+            <div id="no-data" class="banner" hidden>
+                <span id="no-data-message">No data found. Please upload a TXT first.</span>
+                <a href="/">Go back</a>.
             </div>
 
-            <div class="stats">
-                <div class="stat-item">
-                    <span class="stat-label">Total Nodes:</span>
-                    <span class="stat-value" id="total-nodes">-</span>
+            <section class="stats" aria-label="Graph statistics">
+                <div class="stat"><span class="stat-label">Nodes</span><span class="stat-value" id="total-nodes">-</span></div>
+                <div class="stat"><span class="stat-label">Edges</span><span class="stat-value" id="total-edges">-</span></div>
+                <div class="stat"><span class="stat-label">Depth</span><span class="stat-value" id="total-levels">-</span></div>
+                <div class="stat"><span class="stat-label">Visible</span><span class="stat-value" id="visible-nodes">-</span></div>
+            </section>
+
+            <section>
+                <h2 class="section-title"><label for="search">Search</label></h2>
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M21 21l-4.3-4.3" stroke-linecap="round" />
+                    </svg>
+                    <input type="text" id="search" placeholder="Module, group or version…" autocomplete="off"
+                        spellcheck="false">
+                    <kbd aria-hidden="true">/</kbd>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Edges:</span>
-                    <span class="stat-value" id="total-edges">-</span>
+                <div class="search-meta">
+                    <span id="search-count" aria-live="polite">Press Enter to jump between matches</span>
+                    <span class="search-nav">
+                        <button class="mini-btn" id="search-prev" aria-label="Previous match" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" aria-hidden="true"><path d="M18 15l-6-6-6 6" /></svg>
+                        </button>
+                        <button class="mini-btn" id="search-next" aria-label="Next match" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                        </button>
+                    </span>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">Visible Nodes:</span>
-                    <span class="stat-value" id="visible-nodes">-</span>
+            </section>
+
+            <section>
+                <h2 class="section-title">Display</h2>
+                <div class="control">
+                    <div class="control-label"><span>Edges</span></div>
+                    <div class="segmented" role="group" aria-label="Edge visibility" data-setting="edges">
+                        <button type="button" data-value="all" aria-pressed="true">All</button>
+                        <button type="button" data-value="hierarchy" aria-pressed="false"
+                            title="Only edges that go exactly one level down">Hierarchy</button>
+                        <button type="button" data-value="focus" aria-pressed="false"
+                            title="Only edges of the hovered or selected node">Focus</button>
+                    </div>
                 </div>
+                <div class="control">
+                    <div class="control-label"><span>Labels</span></div>
+                    <div class="segmented" role="group" aria-label="Label visibility" data-setting="labels">
+                        <button type="button" data-value="auto" aria-pressed="true"
+                            title="Show labels when zoomed in">Auto</button>
+                        <button type="button" data-value="all" aria-pressed="false">All</button>
+                        <button type="button" data-value="none" aria-pressed="false">None</button>
+                    </div>
+                </div>
+                <div class="control">
+                    <label class="check"><input type="checkbox" id="scale-dependents" checked> Size nodes by number of
+                        dependents</label>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">Layout</h2>
+                <div class="control">
+                    <label class="control-label" for="node-size"><span>Node size</span><output id="node-size-value">6</output></label>
+                    <input type="range" id="node-size" min="3" max="14" value="6">
+                </div>
+                <div class="control">
+                    <label class="control-label" for="level-gap"><span>Level spacing</span><output id="level-gap-value">120</output></label>
+                    <input type="range" id="level-gap" min="50" max="320" step="10" value="120">
+                </div>
+                <div class="control">
+                    <label class="control-label" for="node-gap"><span>Node spacing</span><output id="node-gap-value">36</output></label>
+                    <input type="range" id="node-gap" min="16" max="120" step="2" value="36">
+                </div>
+                <div class="control">
+                    <label class="control-label" for="row-cap"><span>Max nodes per row</span><output id="row-cap-value">40</output></label>
+                    <input type="range" id="row-cap" min="6" max="200" step="2" value="40">
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">Legend</h2>
+                <div class="legend" id="legend"></div>
+            </section>
+
+            <div class="shortcuts" aria-label="Keyboard and mouse shortcuts">
+                <kbd>/</kbd><span>Focus search</span>
+                <kbd>F</kbd><span>Fit graph to screen</span>
+                <kbd>Esc</kbd><span>Clear selection</span>
+                <kbd>Drag</kbd><span>Move node (snaps back to its level)</span>
+                <kbd>Right-click</kbd><span>Hide node</span>
+            </div>
+        </aside>
+
+        <main class="canvas" id="canvas">
+            <svg id="graph" role="img" aria-label="Dependency graph"></svg>
+
+            <div class="toolbar" role="toolbar" aria-label="Graph tools">
+                <button class="tool-btn sidebar-toggle" id="sidebar-toggle" aria-label="Toggle controls"
+                    title="Controls">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" />
+                    </svg>
+                </button>
+                <button class="tool-btn" id="zoom-in" aria-label="Zoom in" title="Zoom in">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+                    </svg>
+                </button>
+                <button class="tool-btn" id="zoom-out" aria-label="Zoom out" title="Zoom out">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M5 12h14" stroke-linecap="round" />
+                    </svg>
+                </button>
+                <button class="tool-btn" id="zoom-fit" aria-label="Fit graph to screen" title="Fit to screen (F)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+                    </svg>
+                </button>
+                <button class="tool-btn" id="zoom-root" aria-label="Go to root" title="Go to root">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="6" r="2.5" />
+                        <path d="M12 8.5V13M12 13l-6 5M12 13l6 5M12 13v5" />
+                    </svg>
+                </button>
+                <hr>
+                <button class="tool-btn" id="reset-layout" aria-label="Reset layout" title="Reset layout">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                        <path d="M3 3v5h5" />
+                    </svg>
+                </button>
+                <button class="tool-btn" id="restore-hidden" aria-label="Show hidden nodes" title="Show hidden nodes"
+                    disabled>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span class="badge" id="hidden-count" hidden>0</span>
+                </button>
             </div>
 
-            <div class="controls">
-                <div class="control-group">
-                    <label for="search">Search Dependencies:</label>
-                    <input type="text" id="search" placeholder="Type to filter nodes...">
+            <aside class="details" id="details" aria-label="Selected dependency" hidden>
+                <div class="details-header">
+                    <span class="legend-swatch" id="details-swatch"></span>
+                    <div class="details-title">
+                        <h2 id="details-name"></h2>
+                        <p id="details-group"></p>
+                    </div>
+                    <button class="mini-btn" id="details-close" aria-label="Close details">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
+                <div class="details-body" id="details-body"></div>
+                <div class="details-actions">
+                    <button class="btn" id="details-center">Center</button>
+                    <button class="btn" id="details-copy" title="Copy the group:artifact:version coordinate">Copy</button>
+                    <button class="btn danger" id="details-hide">Hide</button>
+                </div>
+            </aside>
 
-                <div class="control-group">
-                    <label for="node-size">Node Size: <span id="node-size-value">5</span></label>
-                    <input type="range" id="node-size" min="2" max="15" value="5">
-                </div>
-
-                <div class="control-group">
-                    <label for="link-distance">Link Distance: <span id="link-distance-value">50</span></label>
-                    <input type="range" id="link-distance" min="20" max="200" value="50">
-                </div>
-            </div>
-
-            <div class="legend">
-                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;">Legend</h3>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #000000;"></div>
-                    <span class="legend-label">Root Node</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #4CAF50;"></div>
-                    <span class="legend-label">Project Dependencies</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #2196F3;"></div>
-                    <span class="legend-label">External Dependencies</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #FF9800;"></div>
-                    <span class="legend-label">Android/Google</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #9C27B0;"></div>
-                    <span class="legend-label">Kotlin/JetBrains</span>
-                </div>
-            </div>
-
-            <div class="node-info" id="node-info">
-                <h3 id="node-title">Node Information</h3>
-                <p><strong>Module:</strong> <span id="node-module"></span></p>
-                <p><strong>Version:</strong> <span id="node-version"></span></p>
-                <p><strong>Resolution:</strong> <span id="node-resolution"></span></p>
-                <p><strong>Full:</strong> <span id="node-full"></span></p>
-            </div>
-        </div>
-
-        <div class="main-content">
-            <svg id="graph"></svg>
-        </div>
+            <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+            <div class="zoom-indicator" id="zoom-indicator">100%</div>
+            <div class="toast" id="toast" role="status" hidden></div>
+        </main>
     </div>
 
-    <div class="tooltip" id="tooltip" style="display: none;"></div>
-
     <script>
-        // Default dummy graph data
+        // Default dummy graph data (used when the page is opened without server data)
         const defaultGraphData = {
             "nodes": [
+                { "id": "root:", "module": "root", "version": "", "resolution": "", "full": "root" },
                 { "id": "project :app", "module": "project :app", "version": "", "resolution": "", "full": "project :app" },
                 { "id": "project :core", "module": "project :core", "version": "", "resolution": "", "full": "project :core" },
                 { "id": "androidx.core:core-ktx:1.10.1", "module": "androidx.core:core-ktx", "version": "1.10.1", "resolution": "", "full": "androidx.core:core-ktx:1.10.1" },
-                { "id": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22", "module": "org.jetbrains.kotlin:kotlin-stdlib", "version": "1.8.22", "resolution": "", "full": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22" },
-                { "id": "com.google.android.material:material:1.9.0", "module": "com.google.android.material:material", "version": "1.9.0", "resolution": "", "full": "com.google.android.material:material:1.9.0" }
+                { "id": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22", "module": "org.jetbrains.kotlin:kotlin-stdlib", "version": "1.8.22", "resolution": "", "full": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22 -> 1.9.22" },
+                { "id": "com.google.android.material:material:1.9.0", "module": "com.google.android.material:material", "version": "1.9.0", "resolution": "", "full": "com.google.android.material:material:1.9.0" },
+                { "id": "com.squareup.okhttp3:okhttp:4.12.0", "module": "com.squareup.okhttp3:okhttp", "version": "4.12.0", "resolution": "", "full": "com.squareup.okhttp3:okhttp:4.12.0" }
             ],
             "edges": [
+                { "source": "root:", "target": "project :app" },
+                { "source": "root:", "target": "com.google.android.material:material:1.9.0" },
                 { "source": "project :app", "target": "project :core" },
                 { "source": "project :app", "target": "androidx.core:core-ktx:1.10.1" },
                 { "source": "project :core", "target": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22" },
+                { "source": "project :core", "target": "com.squareup.okhttp3:okhttp:4.12.0" },
+                { "source": "com.squareup.okhttp3:okhttp:4.12.0", "target": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22" },
                 { "source": "androidx.core:core-ktx:1.10.1", "target": "org.jetbrains.kotlin:kotlin-stdlib:1.8.22" },
                 { "source": "com.google.android.material:material:1.9.0", "target": "androidx.core:core-ktx:1.10.1" }
             ],
-            "metadata": { "total_nodes": 5, "total_edges": 5 }
+            "metadata": { "total_nodes": 7, "total_edges": 9 }
         };
 
-        let currentVisualization = null;
+        const CATEGORIES = [
+            { key: 'root', label: 'Root', color: 'var(--c-root)' },
+            { key: 'project', label: 'Project modules', color: 'var(--c-project)' },
+            { key: 'android', label: 'Android / Google', color: 'var(--c-android)' },
+            { key: 'kotlin', label: 'Kotlin / JetBrains', color: 'var(--c-kotlin)' },
+            { key: 'external', label: 'Other external', color: 'var(--c-external)' },
+        ];
+        const CATEGORY_ORDER = Object.fromEntries(CATEGORIES.map((c, i) => [c.key, i]));
+        const ARROW = 5; // arrow marker length in px, used to stop edges before the node edge
+
+        function categoryOf(module) {
+            if (module === 'root') return 'root';
+            if (module.startsWith('project ')) return 'project';
+            if (module.includes('android') || module.includes('google')) return 'android';
+            if (module.includes('kotlin') || module.includes('jetbrains')) return 'kotlin';
+            return 'external';
+        }
+
+        function colorOf(d) {
+            return CATEGORIES[CATEGORY_ORDER[d.category]].color;
+        }
+
+        // "group:artifact" -> { name: artifact, group }; project/root modules are kept as-is.
+        function splitModule(module) {
+            if (module === 'root' || module.startsWith('project ')) return { name: module, group: '' };
+            const idx = module.lastIndexOf(':');
+            if (idx === -1) return { name: module, group: '' };
+            return { name: module.slice(idx + 1), group: module.slice(0, idx) };
+        }
+
+        // ------------------------------------------------------------------
+        // State
+        // ------------------------------------------------------------------
+        const settings = {
+            nodeSize: 6,
+            levelGap: 120,
+            nodeGap: 36,
+            rowCap: 40,
+            edges: 'all',
+            labels: 'auto',
+            scaleByDependents: true,
+        };
+
+        const state = {
+            nodes: [],
+            links: [],
+            byId: new Map(),
+            linkByKey: new Map(),
+            root: null,
+            maxLevel: 0,
+            hidden: new Set(),
+            hiddenCats: new Set(),
+            selected: null,
+            hovered: null,
+            matches: [],
+            matchIndex: -1,
+            bands: [],
+        };
+
+        let svg, zoomLayer, bandLayer, linkLayer, nodeLayer, zoom, simulation;
+        let linkSel, nodeSel;
+        let currentTransform = d3.zoomIdentity;
+
+        // ------------------------------------------------------------------
+        // Data preparation
+        // ------------------------------------------------------------------
+        function prepareGraph(data) {
+            const nodes = data.nodes.map(n => {
+                const module = n.module || n.id;
+                const parts = splitModule(module);
+                return {
+                    id: n.id,
+                    module,
+                    version: n.version || '',
+                    resolution: n.resolution || '',
+                    full: n.full || n.id,
+                    name: parts.name,
+                    group: parts.group,
+                    category: categoryOf(module),
+                    conflict: (n.full || '').includes('->'),
+                    parents: [],
+                    children: [],
+                    level: Infinity,
+                    treeParent: null,
+                };
+            });
+            const byId = new Map(nodes.map(n => [n.id, n]));
+
+            const links = [];
+            const linkByKey = new Map();
+            data.edges.forEach(e => {
+                const s = byId.get(e.source.id || e.source);
+                const t = byId.get(e.target.id || e.target);
+                if (!s || !t || s === t) return;
+                const key = `${s.id} ${t.id}`;
+                if (linkByKey.has(key)) return;
+                const link = { id: key, source: s, target: t };
+                links.push(link);
+                linkByKey.set(key, link);
+                s.children.push(t);
+                t.parents.push(s);
+            });
+
+            // Find the root. The converter always emits "root:", but data from other sources may not:
+            // in that case synthesize one that points to every parentless node.
+            let root = nodes.find(n => n.module === 'root');
+            if (!root) {
+                root = {
+                    id: 'root:', module: 'root', version: '', resolution: '', full: 'root', name: 'root',
+                    group: '', category: 'root', conflict: false, parents: [], children: [],
+                    level: Infinity, treeParent: null, synthetic: true,
+                };
+                nodes.filter(n => n.parents.length === 0).forEach(n => {
+                    const link = { id: `${root.id} ${n.id}`, source: root, target: n };
+                    links.push(link);
+                    linkByKey.set(link.id, link);
+                    root.children.push(n);
+                    n.parents.push(root);
+                });
+                nodes.unshift(root);
+                byId.set(root.id, root);
+            }
+
+            // Level = shortest distance from the root (the depth at which the dependency first appears).
+            const bfs = (start, startLevel) => {
+                start.level = startLevel;
+                const queue = [start];
+                for (let i = 0; i < queue.length; i++) {
+                    const u = queue[i];
+                    for (const v of u.children) {
+                        if (v.level === Infinity) {
+                            v.level = u.level + 1;
+                            v.treeParent = u;
+                            queue.push(v);
+                        }
+                    }
+                }
+            };
+            bfs(root, 0);
+            // Nodes unreachable from the root (only possible with malformed data) hang below it.
+            nodes.forEach(n => {
+                if (n.level === Infinity) {
+                    n.detached = true;
+                    bfs(n, 1);
+                }
+            });
+
+            nodes.forEach(n => {
+                n.isRoot = n === root;
+                n.dependents = n.parents.length;
+            });
+            links.forEach(l => {
+                l.tree = l.target.level === l.source.level + 1;
+                l.lateral = l.target.level <= l.source.level;
+            });
+
+            state.nodes = nodes;
+            state.links = links;
+            state.byId = byId;
+            state.linkByKey = linkByKey;
+            state.root = root;
+            state.maxLevel = d3.max(nodes, n => n.level) || 0;
+        }
+
+        function radiusOf(d) {
+            const base = settings.nodeSize;
+            if (d.isRoot) return base + 5;
+            if (!settings.scaleByDependents) return base;
+            return base + Math.min(8, Math.sqrt(Math.max(0, d.dependents - 1)) * 0.9);
+        }
+
+        const visibleNodes = () => state.nodes.filter(n => !state.hidden.has(n.id));
+        const visibleLinks = () => state.links.filter(l => !state.hidden.has(l.source.id) && !state.hidden.has(l.target.id));
+
+        // ------------------------------------------------------------------
+        // Layered layout: every node gets a target slot (tx, ty) inside the band of its level.
+        // Nodes inside a level are ordered by the average x of their parents to reduce crossings,
+        // and wide levels wrap into several staggered sub-rows.
+        // ------------------------------------------------------------------
+        function computeLayout() {
+            const nodes = visibleNodes();
+            nodes.forEach(n => { n.r = radiusOf(n); });
+
+            const byLevel = d3.group(nodes, n => n.level);
+            const levels = Array.from(byLevel.keys()).sort((a, b) => a - b);
+            const maxR = d3.max(nodes, n => n.r) || settings.nodeSize;
+            const nodeGap = Math.max(settings.nodeGap, maxR * 2 + 6);
+            const subRowGap = Math.max(nodeGap * 0.75, maxR * 2 + 12);
+
+            const bands = [];
+            let y = 0;
+            levels.forEach((level, li) => {
+                const members = byLevel.get(level);
+                members.forEach(n => {
+                    const placed = n.parents.filter(p => p.level < level && p.tx !== undefined && !state.hidden.has(p.id));
+                    n._key = placed.length ? d3.mean(placed, p => p.tx) : 0;
+                });
+                members.sort((a, b) =>
+                    (a._key - b._key) ||
+                    (CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category]) ||
+                    a.module.localeCompare(b.module));
+
+                const rows = Math.ceil(members.length / Math.max(1, settings.rowCap));
+                const cols = Math.ceil(members.length / rows);
+                members.forEach((n, i) => {
+                    // Column-major fill keeps the left-to-right ordering intact across sub-rows.
+                    const col = Math.floor(i / rows);
+                    const row = i % rows;
+                    const stagger = rows > 1 ? (row - (rows - 1) / 2) * (nodeGap / rows) : 0;
+                    n.tx = (col - (cols - 1) / 2) * nodeGap + stagger;
+                    n.ty = y + row * subRowGap;
+                });
+
+                const bottom = y + (rows - 1) * subRowGap;
+                bands.push({ level, top: y, bottom, count: members.length, index: li });
+                y = bottom + settings.levelGap;
+            });
+            state.nodeGap = nodeGap;
+            if (svg) updateZoomClass();
+
+            // Root always sits alone at the very top.
+            const root = state.root;
+            if (!state.hidden.has(root.id)) {
+                root.tx = 0;
+                root.ty = 0;
+                root.fx = root.tx;
+                root.fy = root.ty;
+            }
+            state.bands = bands;
+        }
+
+        // ------------------------------------------------------------------
+        // Edge geometry: smooth vertical S-curves for downward edges, bowed arcs for edges that
+        // point sideways/upward (dependencies shared with a shallower level).
+        // ------------------------------------------------------------------
+        function edgePath(l) {
+            const s = l.source, t = l.target;
+            const rs = s.r, rt = t.r + ARROW;
+            const dx = t.x - s.x, dy = t.y - s.y;
+
+            if (dy > rs + rt + 12) {
+                const sy = s.y + rs;
+                const ty = t.y - rt;
+                const bend = Math.max(24, (ty - sy) * 0.5);
+                return `M${s.x},${sy}C${s.x},${sy + bend} ${t.x},${ty - bend} ${t.x},${ty}`;
+            }
+
+            const dist = Math.hypot(dx, dy) || 1;
+            const bow = Math.min(90, 18 + dist * 0.25);
+            // Control point perpendicular to the chord; always bow downward-ish for readability.
+            let nx = -dy / dist, ny = dx / dist;
+            if (ny < 0) { nx = -nx; ny = -ny; }
+            const cx = (s.x + t.x) / 2 + nx * bow;
+            const cy = (s.y + t.y) / 2 + ny * bow;
+            const a = towards(s, cx, cy, rs);
+            const b = towards(t, cx, cy, rt);
+            return `M${a.x},${a.y}Q${cx},${cy} ${b.x},${b.y}`;
+        }
+
+        function towards(n, px, py, dist) {
+            const dx = px - n.x, dy = py - n.y;
+            const len = Math.hypot(dx, dy) || 1;
+            return { x: n.x + (dx / len) * dist, y: n.y + (dy / len) * dist };
+        }
+
+        // ------------------------------------------------------------------
+        // Rendering
+        // ------------------------------------------------------------------
+        function initSvg() {
+            svg = d3.select('#graph');
+            svg.selectAll('*').remove();
+
+            const defs = svg.append('defs');
+            // Marker fills do not inherit the edge's stroke-opacity, so each state gets its own marker.
+            [
+                ['arrow', 'var(--edge)', 0.5],
+                ['arrow-faint', 'var(--edge)', 0.08],
+                ['arrow-out', 'var(--edge-out)', 1],
+                ['arrow-in', 'var(--edge-in)', 1],
+                ['arrow-path', 'var(--edge-path)', 1],
+            ].forEach(([id, color, opacity]) => {
+                defs.append('marker')
+                    .attr('id', id)
+                    .attr('viewBox', '0 -5 10 10')
+                    .attr('refX', 0)
+                    .attr('refY', 0)
+                    .attr('markerUnits', 'userSpaceOnUse')
+                    .attr('markerWidth', ARROW + 2)
+                    .attr('markerHeight', ARROW + 2)
+                    .attr('orient', 'auto')
+                    .append('path')
+                    .attr('d', 'M0,-4L10,0L0,4Z')
+                    .style('fill', color)
+                    .style('fill-opacity', opacity);
+            });
+
+            zoomLayer = svg.append('g').attr('class', 'zoom-layer');
+            bandLayer = zoomLayer.append('g').attr('class', 'bands');
+            linkLayer = zoomLayer.append('g').attr('class', 'links');
+            nodeLayer = zoomLayer.append('g').attr('class', 'nodes');
+
+            zoom = d3.zoom()
+                .scaleExtent([0.03, 8])
+                .on('zoom', event => {
+                    currentTransform = event.transform;
+                    zoomLayer.attr('transform', currentTransform);
+                    updateZoomClass();
+                    document.getElementById('zoom-indicator').textContent = `${Math.round(currentTransform.k * 100)}%`;
+                    hideTooltip();
+                });
+
+            svg.call(zoom).on('dblclick.zoom', null);
+            svg.on('click', event => {
+                if (event.target === svg.node()) select(null);
+            });
+
+            applyDisplayClasses();
+        }
+
+        // In "auto" label mode every label is shown only once neighbouring nodes are far enough
+        // apart on screen for the labels not to overlap.
+        function updateZoomClass() {
+            svg.classed('zoomed-in', currentTransform.k * (state.nodeGap || settings.nodeGap) >= 96);
+        }
+
+        function drawBands() {
+            const nodes = visibleNodes();
+            if (!nodes.length) {
+                bandLayer.selectAll('*').remove();
+                return;
+            }
+            const [minX, maxX] = d3.extent(nodes, n => n.tx);
+            const pad = Math.min(settings.levelGap * 0.42, 44);
+            const left = minX - 140;
+            const width = (maxX - minX) + 280;
+
+            const band = bandLayer.selectAll('g.band-group')
+                .data(state.bands, d => d.level)
+                .join(enter => {
+                    const g = enter.append('g').attr('class', 'band-group');
+                    g.append('rect').attr('class', 'band').attr('rx', 12);
+                    g.append('text').attr('class', 'band-label');
+                    g.append('text').attr('class', 'band-count');
+                    return g;
+                });
+
+            band.select('rect')
+                .classed('odd', d => d.index % 2 === 1)
+                .attr('x', left)
+                .attr('y', d => d.top - pad)
+                .attr('width', width)
+                .attr('height', d => d.bottom - d.top + pad * 2);
+            band.select('.band-label')
+                .attr('x', left + 14)
+                .attr('y', d => d.top - pad + 18)
+                .text(d => d.level === 0 ? 'Root' : `Level ${d.level}`);
+            band.select('.band-count')
+                .attr('x', left + 14)
+                .attr('y', d => d.top - pad + 33)
+                .text(d => d.level === 0 ? '' : `${d.count} ${d.count === 1 ? 'dependency' : 'dependencies'}`);
+        }
+
+        function render() {
+            const nodes = visibleNodes();
+            const links = visibleLinks();
+
+            linkSel = linkLayer.selectAll('path.link')
+                .data(links, d => d.id)
+                .join('path')
+                .attr('class', 'link')
+                .classed('is-tree', d => d.tree)
+                .classed('is-lateral', d => d.lateral);
+
+            nodeSel = nodeLayer.selectAll('g.node')
+                .data(nodes, d => d.id)
+                .join(enter => {
+                    const g = enter.append('g');
+                    g.append('circle').attr('class', 'focus-ring');
+                    g.append('circle').attr('class', 'dot');
+                    g.append('circle').attr('class', 'ring');
+                    g.append('text').attr('text-anchor', 'middle');
+                    g.on('mouseenter', (event, d) => { if (!dragState.active) hover(d, event); })
+                        .on('mousemove', event => moveTooltip(event))
+                        .on('mouseleave', () => { if (!dragState.active) hover(null); })
+                        .on('click', (event, d) => {
+                            event.stopPropagation();
+                            select(state.selected === d ? null : d);
+                        })
+                        .on('contextmenu', (event, d) => {
+                            event.preventDefault();
+                            hideNode(d);
+                        })
+                        .call(drag);
+                    return g;
+                })
+                .attr('class', d => `node cat-${d.category} level-${Math.min(d.level, 99)}${d.isRoot ? ' is-root' : ''}`);
+
+            nodeSel.select('.dot')
+                .attr('r', d => d.r)
+                .style('fill', colorOf);
+            nodeSel.select('.ring')
+                .attr('r', d => d.r + 2.5)
+                .attr('display', d => d.conflict ? null : 'none');
+            nodeSel.select('.focus-ring')
+                .attr('r', d => d.r + 5);
+            nodeSel.select('text')
+                .attr('y', d => d.isRoot ? -(d.r + 8) : d.r + 13)
+                .text(d => d.isRoot ? 'root' : (d.name.length > 24 ? `${d.name.slice(0, 22)}…` : d.name));
+
+            document.getElementById('visible-nodes').textContent = nodes.length;
+            const hiddenCount = state.hidden.size;
+            const badge = document.getElementById('hidden-count');
+            badge.textContent = hiddenCount;
+            badge.hidden = hiddenCount === 0;
+            document.getElementById('restore-hidden').disabled = hiddenCount === 0;
+
+            updateHighlight();
+        }
+
+        function ticked() {
+            nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+            linkSel.attr('d', edgePath);
+        }
+
+        // ------------------------------------------------------------------
+        // Simulation: nodes are pulled towards their layout slot, links act as soft springs so that
+        // dragging a node gently tugs its neighbours without breaking the level structure.
+        // ------------------------------------------------------------------
+        function setupSimulation() {
+            if (simulation) simulation.stop();
+            simulation = d3.forceSimulation()
+                .alphaDecay(0.045)
+                .velocityDecay(0.35)
+                .force('x', d3.forceX(d => d.tx).strength(0.22))
+                .force('y', d3.forceY(d => d.ty).strength(0.85))
+                .force('link', d3.forceLink().strength(0.012))
+                .force('collide', d3.forceCollide().strength(0.7).iterations(2))
+                .on('tick', ticked);
+            syncSimulation();
+        }
+
+        function syncSimulation() {
+            const nodes = visibleNodes();
+            const links = visibleLinks();
+            simulation.nodes(nodes);
+            simulation.force('link')
+                .links(links)
+                .distance(l => Math.hypot(l.target.tx - l.source.tx, l.target.ty - l.source.ty));
+            simulation.force('x').x(d => d.tx);
+            simulation.force('y').y(d => d.ty);
+            simulation.force('collide').radius(d => d.r + 3);
+        }
+
+        const dragState = { active: false };
+        const drag = d3.drag()
+            .on('start', function (event, d) {
+                if (!event.active) simulation.alphaTarget(0.2).restart();
+                dragState.active = true;
+                d3.select(this).classed('is-dragging', true);
+                d.fx = d.x;
+                d.fy = d.y;
+                hideTooltip();
+            })
+            .on('drag', (event, d) => {
+                d.fx = event.x;
+                d.fy = d.isRoot ? d.ty : event.y;
+            })
+            .on('end', (event, d) => {
+                if (!event.active) simulation.alphaTarget(0);
+                dragState.active = false;
+                nodeLayer.selectAll('.is-dragging').classed('is-dragging', false);
+                // Keep the horizontal position the user chose, but let the node glide back to its level.
+                d.tx = d.fx;
+                if (d.isRoot) {
+                    d.fx = d.tx;
+                    d.fy = d.ty;
+                } else {
+                    d.fx = null;
+                    d.fy = null;
+                }
+                simulation.force('x').x(n => n.tx);
+                simulation.alpha(Math.max(simulation.alpha(), 0.3)).restart();
+            });
+
+        // Recompute layout slots and animate nodes into them.
+        function relayout(alpha = 0.7) {
+            computeLayout();
+            render();
+            drawBands();
+            syncSimulation();
+            simulation.alpha(alpha).restart();
+        }
+
+        // ------------------------------------------------------------------
+        // Highlighting / selection
+        // ------------------------------------------------------------------
+        function pathToRoot(d) {
+            const path = [];
+            for (let n = d; n; n = n.treeParent) path.unshift(n);
+            return path;
+        }
+
+        function updateHighlight() {
+            if (!nodeSel) return;
+            const focus = state.hovered || state.selected;
+            const neighbors = new Set();
+            const onPath = new Set();
+            const pathLinks = new Set();
+
+            if (focus) {
+                focus.children.forEach(n => neighbors.add(n));
+                focus.parents.forEach(n => neighbors.add(n));
+            }
+            if (state.selected) {
+                const path = pathToRoot(state.selected);
+                path.forEach(n => onPath.add(n));
+                for (let i = 1; i < path.length; i++) {
+                    const link = state.linkByKey.get(`${path[i - 1].id} ${path[i].id}`);
+                    if (link) pathLinks.add(link);
+                }
+            }
+            const matches = new Set(state.matches);
+
+            svg.classed('has-focus', !!focus);
+            svg.classed('searching', state.matches.length > 0 || document.getElementById('search').value.trim() !== '');
+
+            nodeSel
+                .classed('is-focus', d => d === focus || d === state.selected)
+                .classed('is-selected', d => d === state.selected)
+                .classed('is-neighbor', d => neighbors.has(d))
+                .classed('is-on-path', d => onPath.has(d))
+                .classed('is-match', d => matches.has(d));
+
+            linkSel
+                .classed('is-out', d => !!focus && d.source === focus)
+                .classed('is-in', d => !!focus && d.target === focus)
+                .classed('is-path', d => pathLinks.has(d));
+
+            // Draw highlighted edges above the rest.
+            if (focus || pathLinks.size) {
+                linkSel.filter(d => d.source === focus || d.target === focus || pathLinks.has(d)).raise();
+            }
+        }
+
+        function hover(d, event) {
+            state.hovered = d;
+            updateHighlight();
+            if (d && event) showTooltip(d, event);
+            else hideTooltip();
+        }
+
+        function select(d, { center = false } = {}) {
+            state.selected = d;
+            updateHighlight();
+            renderDetails();
+            if (d && center) centerOn(d);
+        }
+
+        // ------------------------------------------------------------------
+        // Tooltip & details panel
+        // ------------------------------------------------------------------
+        const tooltip = document.getElementById('tooltip');
+
+        function el(tag, props = {}, children = []) {
+            const node = document.createElement(tag);
+            Object.entries(props).forEach(([k, v]) => {
+                if (k === 'class') node.className = v;
+                else if (k === 'text') node.textContent = v;
+                else if (k === 'style') Object.assign(node.style, v);
+                else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+                else node.setAttribute(k, v);
+            });
+            children.forEach(c => c && node.append(c));
+            return node;
+        }
+
+        // replaceChildren() would render null placeholders as the text "null".
+        function setChildren(node, ...children) {
+            node.replaceChildren(...children.filter(Boolean));
+        }
+
+        function showTooltip(d, event) {
+            setChildren(tooltip,
+                el('strong', { text: d.isRoot ? 'root' : d.name }),
+                d.group ? el('div', { class: 'tt-sub', text: d.group }) : null,
+                el('div', { class: 'tt-row', text: [
+                    d.version ? `v${d.version}` : null,
+                    `level ${d.level}`,
+                    `${d.children.length} deps`,
+                    `${d.dependents} dependents`,
+                ].filter(Boolean).join(' · ') }),
+                d.conflict ? el('div', { class: 'tt-row', text: d.full }) : null,
+            );
+            tooltip.hidden = false;
+            moveTooltip(event);
+        }
+
+        function moveTooltip(event) {
+            if (tooltip.hidden) return;
+            const bounds = document.getElementById('canvas').getBoundingClientRect();
+            let x = event.clientX - bounds.left + 14;
+            let y = event.clientY - bounds.top + 14;
+            const w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+            if (x + w > bounds.width - 8) x = event.clientX - bounds.left - w - 14;
+            if (y + h > bounds.height - 8) y = event.clientY - bounds.top - h - 14;
+            tooltip.style.left = `${x}px`;
+            tooltip.style.top = `${y}px`;
+        }
+
+        function hideTooltip() {
+            tooltip.hidden = true;
+        }
+
+        function nodeChip(n) {
+            return el('button', {
+                class: 'chip',
+                type: 'button',
+                title: n.full,
+                onclick: () => select(n, { center: true }),
+            }, [
+                el('i', { class: 'dot-sm', style: { background: colorOf(n) } }),
+                el('span', { text: n.isRoot ? 'root' : (n.version ? `${n.name}:${n.version}` : n.name) }),
+            ]);
+        }
+
+        function chipList(nodes, limit = 24) {
+            const container = el('div', { class: 'chips' });
+            if (!nodes.length) {
+                container.append(el('span', { class: 'muted', text: 'None' }));
+                return container;
+            }
+            const sorted = [...nodes].sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+            const renderChips = count => {
+                container.replaceChildren(...sorted.slice(0, count).map(nodeChip));
+                if (sorted.length > count) {
+                    container.append(el('button', {
+                        class: 'link-btn',
+                        type: 'button',
+                        text: `+${sorted.length - count} more`,
+                        onclick: () => renderChips(sorted.length),
+                    }));
+                }
+            };
+            renderChips(limit);
+            return container;
+        }
+
+        function countTransitive(d) {
+            const seen = new Set();
+            const stack = [...d.children];
+            while (stack.length) {
+                const n = stack.pop();
+                if (seen.has(n)) continue;
+                seen.add(n);
+                stack.push(...n.children);
+            }
+            seen.delete(d);
+            return seen.size;
+        }
+
+        function renderDetails() {
+            const panel = document.getElementById('details');
+            const d = state.selected;
+            if (!d) {
+                panel.hidden = true;
+                return;
+            }
+            panel.hidden = false;
+            document.getElementById('details-swatch').style.background = colorOf(d);
+            document.getElementById('details-name').textContent = d.isRoot ? 'root' : d.name;
+            document.getElementById('details-group').textContent = d.group || (d.isRoot ? 'Entry point of the configuration' : '');
+
+            const badges = el('div', { class: 'badges' }, [
+                d.version ? el('span', { class: 'badge-pill info', text: `v${d.version}` }) : null,
+                el('span', { class: 'badge-pill', text: CATEGORIES[CATEGORY_ORDER[d.category]].label }),
+                d.conflict ? el('span', { class: 'badge-pill warn', text: 'Version resolved by Gradle' }) : null,
+                d.resolution === 'c' ? el('span', { class: 'badge-pill', text: 'Dependency constraint' }) : null,
+                d.resolution && d.resolution !== 'c' ? el('span', { class: 'badge-pill', text: `Resolution: ${d.resolution}` }) : null,
+                d.detached ? el('span', { class: 'badge-pill warn', text: 'Not reachable from root' }) : null,
+            ]);
+
+            const metrics = el('div', { class: 'metrics' }, [
+                el('div', { class: 'metric' }, [el('strong', { text: d.level }), el('span', { text: 'Level' })]),
+                el('div', { class: 'metric' }, [el('strong', { text: d.children.length }), el('span', { text: 'Direct deps' })]),
+                el('div', { class: 'metric' }, [el('strong', { text: d.dependents }), el('span', { text: 'Dependents' })]),
+            ]);
+
+            const path = pathToRoot(d);
+            const pathEl = el('div', { class: 'path' });
+            path.forEach((n, i) => {
+                if (i > 0) pathEl.append(el('span', { class: 'path-step', text: '↓' }));
+                pathEl.append(nodeChip(n));
+            });
+
+            const sectionTitle = (text, color) => el('h3', {}, [
+                color ? el('i', { style: { background: color } }) : null,
+                document.createTextNode(text),
+            ]);
+
+            setChildren(document.getElementById('details-body'),
+                badges,
+                d.isRoot ? null : el('p', { class: 'full-coord', text: d.full }),
+                metrics,
+                d.isRoot ? null : el('div', { class: 'details-section' }, [
+                    sectionTitle(`Shortest path from root`, 'var(--edge-path)'),
+                    pathEl,
+                ]),
+                el('div', { class: 'details-section' }, [
+                    sectionTitle(`Depends on (${d.children.length}) · ${countTransitive(d)} transitive`, 'var(--edge-out)'),
+                    chipList(d.children),
+                ]),
+                el('div', { class: 'details-section' }, [
+                    sectionTitle(`Used by (${d.parents.length})`, 'var(--edge-in)'),
+                    chipList(d.parents),
+                ]),
+            );
+            document.getElementById('details-hide').disabled = d.isRoot;
+        }
+
+        // ------------------------------------------------------------------
+        // Zoom helpers
+        // ------------------------------------------------------------------
+        function canvasSize() {
+            const node = svg.node();
+            return [node.clientWidth, node.clientHeight];
+        }
+
+        function fitToView(duration = 600) {
+            const nodes = visibleNodes();
+            if (!nodes.length) return;
+            const [w, h] = canvasSize();
+            // Include the level band labels that sit to the left of the widest row.
+            let [x0, x1] = d3.extent(nodes, n => n.x);
+            x0 = Math.min(x0, d3.min(nodes, n => n.tx) - 140);
+            x1 = Math.max(x1, d3.max(nodes, n => n.tx) + 140);
+            const [y0, y1] = d3.extent(nodes, n => n.y);
+            const pad = 60;
+            const bw = Math.max(1, x1 - x0), bh = Math.max(1, y1 - y0);
+            const k = Math.min(2, Math.max(0.03, Math.min((w - pad * 2) / bw, (h - pad * 2) / bh)));
+            const t = d3.zoomIdentity
+                .translate(w / 2, pad + Math.max(0, (h - pad * 2 - bh * k) / 2))
+                .scale(k)
+                .translate(-(x0 + x1) / 2, -y0);
+            (duration ? svg.transition().duration(duration) : svg).call(zoom.transform, t);
+        }
+
+        function centerOn(d, scale) {
+            const [w, h] = canvasSize();
+            const k = scale || Math.max(currentTransform.k, 1.2);
+            const t = d3.zoomIdentity.translate(w / 2, h / 2).scale(k).translate(-d.x, -d.y);
+            svg.transition().duration(550).call(zoom.transform, t);
+        }
+
+        // ------------------------------------------------------------------
+        // Hide / restore
+        // ------------------------------------------------------------------
+        function hideNode(d) {
+            if (d.isRoot) {
+                toast('The root node cannot be hidden');
+                return;
+            }
+            state.hidden.add(d.id);
+            if (state.selected === d) select(null);
+            if (state.hovered === d) hover(null);
+            state.matches = state.matches.filter(n => n !== d);
+            relayout(0.5);
+            toast(`Hidden ${d.name} · use the eye button to restore`);
+        }
+
+        function restoreHidden() {
+            state.hidden.clear();
+            relayout(0.5);
+            runSearch();
+        }
+
+        let toastTimer;
+        function toast(message) {
+            const t = document.getElementById('toast');
+            t.textContent = message;
+            t.hidden = false;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+        }
+
+        // ------------------------------------------------------------------
+        // Search
+        // ------------------------------------------------------------------
+        const searchInput = document.getElementById('search');
+
+        function runSearch() {
+            const term = searchInput.value.trim().toLowerCase();
+            state.matches = term
+                ? visibleNodes()
+                    .filter(n => !n.isRoot && (n.id.toLowerCase().includes(term) || n.full.toLowerCase().includes(term)))
+                    .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
+                : [];
+            state.matchIndex = -1;
+            updateSearchMeta();
+            updateHighlight();
+        }
+
+        function updateSearchMeta() {
+            const count = document.getElementById('search-count');
+            const term = searchInput.value.trim();
+            const n = state.matches.length;
+            if (!term) count.textContent = 'Press Enter to jump between matches';
+            else if (!n) count.textContent = 'No matches';
+            else if (state.matchIndex >= 0) count.textContent = `${state.matchIndex + 1} of ${n} matches`;
+            else count.textContent = `${n} ${n === 1 ? 'match' : 'matches'}`;
+            document.getElementById('search-prev').disabled = n === 0;
+            document.getElementById('search-next').disabled = n === 0;
+        }
+
+        function stepMatch(delta) {
+            const n = state.matches.length;
+            if (!n) return;
+            state.matchIndex = (state.matchIndex + delta + n) % n;
+            select(state.matches[state.matchIndex], { center: true });
+            updateSearchMeta();
+        }
+
+        // ------------------------------------------------------------------
+        // Legend & display settings
+        // ------------------------------------------------------------------
+        function renderLegend() {
+            const counts = d3.rollup(state.nodes, v => v.length, n => n.category);
+            const legend = document.getElementById('legend');
+            legend.replaceChildren(
+                ...CATEGORIES.filter(c => counts.get(c.key)).map(c => {
+                    const toggleable = c.key !== 'root';
+                    return el('button', {
+                        class: `legend-item${toggleable ? '' : ' legend-static'}`,
+                        type: 'button',
+                        'aria-pressed': String(!state.hiddenCats.has(c.key)),
+                        title: toggleable ? 'Click to dim / show this category' : '',
+                        onclick: event => {
+                            if (!toggleable) return;
+                            if (state.hiddenCats.has(c.key)) state.hiddenCats.delete(c.key);
+                            else state.hiddenCats.add(c.key);
+                            event.currentTarget.setAttribute('aria-pressed', String(!state.hiddenCats.has(c.key)));
+                            svg.classed(`hide-cat-${c.key}`, state.hiddenCats.has(c.key));
+                        },
+                    }, [
+                        el('span', { class: 'legend-swatch', style: { background: c.color } }),
+                        el('span', { class: 'legend-label', text: c.label }),
+                        el('span', { class: 'legend-count', text: counts.get(c.key) }),
+                    ]);
+                }),
+                el('div', { class: 'legend-item legend-static' }, [
+                    el('span', { class: 'legend-swatch ring' }),
+                    el('span', { class: 'legend-label', text: 'Version resolved by Gradle (->)' }),
+                    el('span', { class: 'legend-count', text: state.nodes.filter(n => n.conflict).length }),
+                ]),
+            );
+        }
+
+        function applyDisplayClasses() {
+            svg.classed('edges-all', settings.edges === 'all')
+                .classed('edges-hierarchy', settings.edges === 'hierarchy')
+                .classed('edges-focus', settings.edges === 'focus')
+                .classed('labels-auto', settings.labels === 'auto')
+                .classed('labels-all', settings.labels === 'all')
+                .classed('labels-none', settings.labels === 'none');
+        }
+
+        function bindControls() {
+            document.querySelectorAll('.segmented').forEach(group => {
+                group.addEventListener('click', event => {
+                    const button = event.target.closest('button');
+                    if (!button) return;
+                    settings[group.dataset.setting] = button.dataset.value;
+                    group.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+                    applyDisplayClasses();
+                });
+            });
+
+            const sliders = [
+                ['node-size', 'nodeSize'],
+                ['level-gap', 'levelGap'],
+                ['node-gap', 'nodeGap'],
+                ['row-cap', 'rowCap'],
+            ];
+            sliders.forEach(([id, key]) => {
+                const input = document.getElementById(id);
+                const output = document.getElementById(`${id}-value`);
+                input.value = settings[key];
+                output.textContent = settings[key];
+                let frame = null;
+                input.addEventListener('input', () => {
+                    settings[key] = Number(input.value);
+                    output.textContent = input.value;
+                    cancelAnimationFrame(frame);
+                    frame = requestAnimationFrame(() => relayout(0.6));
+                });
+            });
+
+            document.getElementById('scale-dependents').addEventListener('change', event => {
+                settings.scaleByDependents = event.target.checked;
+                relayout(0.4);
+            });
+
+            searchInput.addEventListener('input', runSearch);
+            searchInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    stepMatch(event.shiftKey ? -1 : 1);
+                } else if (event.key === 'Escape') {
+                    searchInput.value = '';
+                    runSearch();
+                    searchInput.blur();
+                }
+            });
+            document.getElementById('search-prev').addEventListener('click', () => stepMatch(-1));
+            document.getElementById('search-next').addEventListener('click', () => stepMatch(1));
+
+            document.getElementById('zoom-in').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1.4));
+            document.getElementById('zoom-out').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.4));
+            document.getElementById('zoom-fit').addEventListener('click', () => fitToView());
+            document.getElementById('zoom-root').addEventListener('click', () => centerOn(state.root, 1.2));
+            document.getElementById('reset-layout').addEventListener('click', () => {
+                state.nodes.forEach(n => { if (!n.isRoot) { n.fx = null; n.fy = null; } });
+                relayout(0.9);
+                setTimeout(() => fitToView(), 450);
+            });
+            document.getElementById('restore-hidden').addEventListener('click', restoreHidden);
+            document.getElementById('sidebar-toggle').addEventListener('click', () => {
+                document.getElementById('app').classList.toggle('sidebar-open');
+            });
+
+            document.getElementById('details-close').addEventListener('click', () => select(null));
+            document.getElementById('details-center').addEventListener('click', () => state.selected && centerOn(state.selected));
+            document.getElementById('details-hide').addEventListener('click', () => state.selected && hideNode(state.selected));
+            document.getElementById('details-copy').addEventListener('click', async () => {
+                if (!state.selected) return;
+                const text = state.selected.version ? `${state.selected.module}:${state.selected.version}` : state.selected.module;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    toast(`Copied ${text}`);
+                } catch (error) {
+                    toast('Clipboard is not available');
+                }
+            });
+
+            document.addEventListener('keydown', event => {
+                const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+                if (event.key === '/' && !typing) {
+                    event.preventDefault();
+                    searchInput.focus();
+                    searchInput.select();
+                } else if (event.key === 'Escape' && !typing) {
+                    select(null);
+                } else if ((event.key === 'f' || event.key === 'F') && !typing && !event.metaKey && !event.ctrlKey) {
+                    fitToView();
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                if (state.nodes.length) fitToView(0);
+            });
+        }
+
+        // ------------------------------------------------------------------
+        // Entry points
+        // ------------------------------------------------------------------
+        function showBanner(message) {
+            if (message) document.getElementById('no-data-message').textContent = message;
+            document.getElementById('no-data').hidden = false;
+        }
 
         function validateAndRender(data) {
             if (!data) {
                 data = defaultGraphData;
             }
 
-            // Check if data is in graph format (nodes and edges)
             if (!data.nodes || !data.edges) {
                 console.error('Data is not in graph format:', data);
-                alert('The data format is incorrect for the Graph Viewer. It seems to be Tree Viewer data. Please try the Tree Viewer or re-upload your file.');
+                showBanner('The data format is incorrect for the Graph Viewer. Try the Tree Viewer or re-upload your file.');
                 return;
             }
-
-            // Update stats
-            document.getElementById('total-nodes').textContent = data.nodes.length;
-            document.getElementById('total-edges').textContent = data.edges.length;
-            document.getElementById('visible-nodes').textContent = data.nodes.length;
 
             createVisualization(data);
         }
 
-        async function loadGraphFromFile() {
-            try {
-                const response = await fetch('dependencies_graph_optimized.json');
-                const data = await response.json();
-                validateAndRender(data);
-            } catch (error) {
-                console.error('Error loading graph data from file:', error);
-                validateAndRender(defaultGraphData);
-            }
-        }
-
         function createVisualization(data) {
-            // Clear existing visualization
-            if (currentVisualization) {
-                d3.select('#graph').selectAll('*').remove();
-            }
+            prepareGraph(data);
+            document.getElementById('total-nodes').textContent = state.nodes.length;
+            document.getElementById('total-edges').textContent = state.links.length;
+            document.getElementById('total-levels').textContent = state.maxLevel;
 
-            const svg = d3.select('#graph');
-            const container = svg.node().parentNode;
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-
-            svg.attr('width', width).attr('height', height);
-
-            // Create zoom behavior
-            const zoom = d3.zoom()
-                .scaleExtent([0.1, 10])
-                .on('zoom', (event) => {
-                    g.attr('transform', event.transform);
-                });
-
-            svg.call(zoom);
-
-            // Define arrow marker
-            svg.append('defs').append('marker')
-                .attr('id', 'arrowhead')
-                .attr('viewBox', '-0 -3 6 6')
-                .attr('refX', 5)
-                .attr('refY', 0)
-                .attr('orient', 'auto')
-                .attr('markerWidth', 5)
-                .attr('markerHeight', 5)
-                .attr('xoverflow', 'visible')
-                .append('svg:path')
-                .attr('d', 'M 0,-2 L 6 ,0 L 0,2')
-                .attr('fill', '#666')
-                .style('stroke', 'none');
-
-            // Create main group for zooming
-            const g = svg.append('g');
-
-            // Color scale for different types of dependencies
-            function getNodeColor(module) {
-                if (module === 'root') return '#000000'; // Black for root node
-                if (module.startsWith('project ')) return '#4CAF50'; // Green for projects
-                if (module.includes('android') || module.includes('google')) return '#FF9800'; // Orange for Android/Google
-                if (module.includes('kotlin') || module.includes('jetbrains')) return '#9C27B0'; // Purple for Kotlin/JetBrains
-                return '#2196F3'; // Blue for other external dependencies
-            }
-
-            // Identify root nodes (nodes with 0 parents)
-            const parentCounts = new Map();
-            data.nodes.forEach(node => parentCounts.set(node.id, 0));
-            data.edges.forEach(edge => {
-                const targetId = edge.target.id || edge.target;
-                parentCounts.set(targetId, (parentCounts.get(targetId) || 0) + 1);
+            initSvg();
+            computeLayout();
+            state.nodes.forEach(n => {
+                n.x = n.tx;
+                n.y = n.ty;
             });
+            render();
+            drawBands();
+            renderLegend();
+            setupSimulation();
 
-            // Set initial positions based on parent count priority
-            data.nodes.forEach(node => {
-                const parentCount = parentCounts.get(node.id) || 0;
-                const isRoot = parentCount === 0 || node.module === 'root';
-
-                // Calculate Y position based on parent count (fewer parents = higher position)
-                let yPosition;
-                if (isRoot) {
-                    yPosition = height * 0.05; // Root at very top
-                } else {
-                    // Normalize parent count to a position between 0.1 and 0.9
-                    const maxParents = Math.max(...Array.from(parentCounts.values()));
-                    const normalizedParentCount = parentCount / maxParents;
-                    yPosition = height * (0.1 + normalizedParentCount * 0.8);
-                }
-
-                node.x = Math.random() * width;
-                node.y = yPosition + (Math.random() - 0.5) * 50; // Add small random offset
-                node.fx = null; // Allow movement
-                node.fy = null; // Allow movement
-            });
-
-            // Create force simulation
-            const simulation = d3.forceSimulation(data.nodes)
-                .force('link', d3.forceLink(data.edges).id(d => d.id).distance(50))
-                .force('charge', d3.forceManyBody().strength(-100))
-                .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('collision', d3.forceCollide().radius(10))
-                .force('y', d3.forceY().y(d => {
-                    const parentCount = parentCounts.get(d.id) || 0;
-                    const isRoot = parentCount === 0 || d.module === 'root';
-
-                    if (isRoot) {
-                        return height * 0.05; // Root at very top
-                    } else {
-                        // Calculate target Y based on parent count
-                        const maxParents = Math.max(...Array.from(parentCounts.values()));
-                        const normalizedParentCount = parentCount / maxParents;
-                        return height * (0.1 + normalizedParentCount * 0.8);
-                    }
-                }).strength(0.3));
-
-            // Create links
-            const link = g.append('g')
-                .selectAll('line')
-                .data(data.edges)
-                .enter().append('line')
-                .attr('class', 'link')
-                .attr('marker-end', 'url(#arrowhead)');
-
-            // Create nodes
-            const node = g.append('g')
-                .selectAll('circle')
-                .data(data.nodes)
-                .enter().append('circle')
-                .attr('class', 'node')
-                .attr('r', 5)
-                .attr('fill', d => getNodeColor(d.module))
-                .call(d3.drag()
-                    .on('start', dragstarted)
-                    .on('drag', dragged)
-                    .on('end', dragended));
-
-            // Add tooltips and interactions
-            const tooltip = d3.select('#tooltip');
-
-            node
-                .on('mouseover', function (event, d) {
-                    // Highlight connected nodes and links
-                    const connectedNodes = new Set();
-                    connectedNodes.add(d.id);
-
-                    link.classed('highlighted', function (l) {
-                        if (l.source.id === d.id || l.target.id === d.id) {
-                            connectedNodes.add(l.source.id);
-                            connectedNodes.add(l.target.id);
-                            return true;
-                        }
-                        return false;
-                    });
-
-                    node.classed('highlighted', n => connectedNodes.has(n.id));
-
-                    // Show tooltip
-                    tooltip
-                        .style('display', 'block')
-                        .style('left', (event.pageX + 10) + 'px')
-                        .style('top', (event.pageY - 10) + 'px')
-                        .html(`
-                            <strong>${d.module}</strong><br>
-                            Version: ${d.version || 'N/A'}<br>
-                            ${d.resolution ? `Resolution: ${d.resolution}<br>` : ''}
-                            Full: ${d.full}
-                        `);
-                })
-                .on('mouseout', function () {
-                    link.classed('highlighted', false);
-                    node.classed('highlighted', false);
-                    tooltip.style('display', 'none');
-                })
-                .on('click', function (event, d) {
-                    // Show node info in sidebar
-                    const nodeInfo = document.getElementById('node-info');
-                    document.getElementById('node-module').textContent = d.module;
-                    document.getElementById('node-version').textContent = d.version || 'N/A';
-                    document.getElementById('node-resolution').textContent = d.resolution || 'N/A';
-                    document.getElementById('node-full').textContent = d.full;
-                    nodeInfo.style.display = 'block';
-                })
-                .on('contextmenu', function (event, d) {
-                    event.preventDefault(); // Prevent default context menu
-
-                    // 1. Identify connected links to remove
-                    const linksToRemove = link.filter(l => l.source.id === d.id || l.target.id === d.id);
-                    
-                    // 2. Animate node and connected links out
-                    const duration = 500;
-                    
-                    d3.select(this)
-                        .transition()
-                        .duration(duration)
-                        .attr('r', 0)
-                        .style('opacity', 0)
-                        .remove(); // Remove from DOM after transition
-
-                    linksToRemove
-                        .transition()
-                        .duration(duration)
-                        .style('opacity', 0)
-                        .remove(); // Remove from DOM after transition
-
-                    // 3. Remove from data structures after animation starts
-                    // We rely on the index in the original data array for splicing
-                    const nodeIndex = data.nodes.findIndex(n => n.id === d.id);
-                    if (nodeIndex > -1) {
-                        data.nodes.splice(nodeIndex, 1);
-                    }
-
-                    // Remove edges from data
-                    const remainingEdges = [];
-                    for (let i = 0; i < data.edges.length; i++) {
-                        const edge = data.edges[i];
-                        const sourceId = edge.source.id || edge.source;
-                        const targetId = edge.target.id || edge.target;
-                        
-                        if (sourceId !== d.id && targetId !== d.id) {
-                            remainingEdges.push(edge);
-                        }
-                    }
-                    data.edges = remainingEdges;
-
-                    // 4. Update stats immediately
-                    document.getElementById('total-nodes').textContent = data.nodes.length;
-                    document.getElementById('total-edges').textContent = data.edges.length;
-                    document.getElementById('visible-nodes').textContent = data.nodes.length;
-
-                    // 5. Update simulation with new data
-                    // We need to re-bind the data to the d3 selection variables 'node' and 'link'
-                    // so that future interactions (like drag or search) work on the updated set.
-                    // However, since we manually removed the DOM elements, we just need to update the simulation's reference.
-                    
-                    simulation.nodes(data.nodes);
-                    simulation.force("link").links(data.edges);
-                    
-                    // Restart simulation gently to fill the void
-                    simulation.alpha(0.3).restart();
-
-                    // Update the global references for subsequent interactions
-                    // Filter the existing D3 selections to exclude the removed elements
-                    // Note: 'remove()' inside transition above handles the DOM, 
-                    // but we should ideally update the D3 selection variables 'node' and 'link'
-                    // for other features like search filtering to work correctly without errors.
-                    currentVisualization.node = currentVisualization.node.filter(n => n.id !== d.id);
-                    currentVisualization.link = currentVisualization.link.filter(l => {
-                        const s = l.source.id || l.source;
-                        const t = l.target.id || l.target;
-                        return s !== d.id && t !== d.id;
-                    });
-                    
-                    // Re-assign to local variables if needed by closures, though closures mostly use 'data'
-                    // The 'node' and 'link' variables in this scope won't update, 
-                    // but 'currentVisualization.node' is what we might use globally if refactored.
-                    // For this scope's event listeners (drag, mouseover), they are attached to the DOM elements.
-                    // Since the DOM element is removed, its listeners go with it.
-                });
-
-            // Update positions on simulation tick
-            simulation.on('tick', () => {
-                link.attr('x1', d => {
-                    const dx = d.target.x - d.source.x;
-                    const dy = d.target.y - d.source.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const radius = parseFloat(node.filter(n => n.id === d.source.id).attr('r')) || 5;
-                    return d.source.x + (dx / distance) * radius;
-                })
-                    .attr('y1', d => {
-                        const dx = d.target.x - d.source.x;
-                        const dy = d.target.y - d.source.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const radius = parseFloat(node.filter(n => n.id === d.source.id).attr('r')) || 5;
-                        return d.source.y + (dy / distance) * radius;
-                    })
-                    .attr('x2', d => {
-                        const dx = d.source.x - d.target.x;
-                        const dy = d.source.y - d.target.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
-                        const arrowOffset = 5; // Account for smaller arrow marker size
-                        return d.target.x + (dx / distance) * (radius + arrowOffset);
-                    })
-                    .attr('y2', d => {
-                        const dx = d.source.x - d.target.x;
-                        const dy = d.source.y - d.target.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const radius = parseFloat(node.filter(n => n.id === d.target.id).attr('r')) || 5;
-                        const arrowOffset = 5; // Account for smaller arrow marker size
-                        return d.target.y + (dy / distance) * (radius + arrowOffset);
-                    });
-
-                node
-                    .attr('cx', d => d.x)
-                    .attr('cy', d => d.y);
-            });
-
-            // Store current visualization reference
-            currentVisualization = { simulation, node, link, svg, g };
-
-            // Drag functions
-            function dragstarted(event, d) {
-                if (!event.active) simulation.alphaTarget(0.3).restart();
-                d.fx = d.x;
-                d.fy = d.y;
-            }
-
-            function dragged(event, d) {
-                d.fx = event.x;
-                d.fy = event.y;
-            }
-
-            function dragended(event, d) {
-                if (!event.active) simulation.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
-            }
-
-            // Search functionality
-            const searchInput = document.getElementById('search');
-            searchInput.addEventListener('input', function () {
-                const searchTerm = this.value.toLowerCase();
-                let visibleCount = 0;
-
-                node.style('opacity', function (d) {
-                    const isVisible = d.module.toLowerCase().includes(searchTerm);
-                    if (isVisible) visibleCount++;
-                    return isVisible ? 1 : 0.1;
-                });
-
-                link.style('opacity', function (d) {
-                    const sourceVisible = d.source.module.toLowerCase().includes(searchTerm);
-                    const targetVisible = d.target.module.toLowerCase().includes(searchTerm);
-                    return (sourceVisible || targetVisible) ? 0.6 : 0.05;
-                });
-
-                document.getElementById('visible-nodes').textContent = visibleCount;
-            });
-
-            // Node size control
-            const nodeSizeSlider = document.getElementById('node-size');
-            const nodeSizeValue = document.getElementById('node-size-value');
-            nodeSizeSlider.addEventListener('input', function () {
-                const size = this.value;
-                nodeSizeValue.textContent = size;
-                node.attr('r', size);
-                simulation.force('collision').radius(parseInt(size) + 2);
-                simulation.alpha(0.3).restart();
-            });
-
-            // Link distance control
-            const linkDistanceSlider = document.getElementById('link-distance');
-            const linkDistanceValue = document.getElementById('link-distance-value');
-            linkDistanceSlider.addEventListener('input', function () {
-                const distance = this.value;
-                linkDistanceValue.textContent = distance;
-                simulation.force('link').distance(parseInt(distance));
-                simulation.alpha(0.3).restart();
-            });
+            // Settle the layout before the first paint so the graph appears already organised.
+            simulation.stop();
+            for (let i = 0; i < 60; i++) simulation.tick();
+            ticked();
+            fitToView(0);
         }
 
-        // Initialize the visualization
-        document.addEventListener('DOMContentLoaded', function () {
-            const noDataBanner = document.getElementById('no-data');
-
-            // Priority 1: Injected data from server (pre-processed by convert_to_graph.py)
-            const serverGraphData = {{ graph_data | tojson | safe
-        }};
-        console.log("Injected graph data:", serverGraphData);
-
-        if (serverGraphData && serverGraphData.nodes && serverGraphData.nodes.length > 0) {
-            validateAndRender(serverGraphData);
-            return;
-        } else if (serverGraphData) {
-            console.warn("Server returned empty graph data.");
-        }
-
-        // Priority 2: localStorage (fallback if opened directly or via static file)
-        const storedRaw = localStorage.getItem('last_result_json');
-        console.log("Local storage data found:", !!storedRaw);
-        if (storedRaw) {
+        // Ad-hoc uploads are never stored on the server: the landing page keeps the parsed JSON in
+        // this tab's sessionStorage and the server filters / converts it on the fly.
+        async function fetchUploadedView(endpoint) {
+            let stored = null;
             try {
-                const parsed = JSON.parse(storedRaw);
-                validateAndRender(parsed);
+                stored = JSON.parse(sessionStorage.getItem('gdv:upload') || 'null');
             } catch (error) {
-                console.error('Failed to parse stored JSON:', error);
-                validateAndRender(defaultGraphData);
+                console.warn('sessionStorage is not available:', error);
             }
-        } else {
-            noDataBanner.style.display = 'block';
-        }
-        });
+            if (!stored || !stored.data) return null;
 
-        // Handle window resize
-        window.addEventListener('resize', function () {
-            const svg = d3.select('#graph');
-            const container = svg.node().parentNode;
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            svg.attr('width', width).attr('height', height);
+            const params = new URLSearchParams(window.location.search);
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    data: stored.data,
+                    filter: params.get('filter'),
+                    project_only: params.get('project_only') === 'true',
+                }),
+            });
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+            return { name: stored.name, data: await response.json() };
+        }
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            bindControls();
+            const hasFilter = new URLSearchParams(window.location.search).has('filter')
+                || new URLSearchParams(window.location.search).get('project_only') === 'true';
+
+            // Priority 1: Injected data from server (a pre-compiled sample, converted by convert_to_graph.py)
+            const serverGraphData = {{ graph_data | tojson | safe }};
+
+            if (serverGraphData && serverGraphData.nodes && serverGraphData.nodes.length > 0) {
+                validateAndRender(serverGraphData);
+                return;
+            } else if (serverGraphData) {
+                showBanner(hasFilter ? 'No dependencies match the current filter.' : undefined);
+                validateAndRender(defaultGraphData);
+                return;
+            }
+
+            // Priority 2: the user's upload, kept in this browser tab only
+            if (new URLSearchParams(window.location.search).get('source') === 'upload') {
+                try {
+                    const uploaded = await fetchUploadedView('/api/graph');
+                    if (uploaded && uploaded.data.nodes && uploaded.data.nodes.length > 0) {
+                        document.getElementById('file-name').textContent = uploaded.name;
+                        validateAndRender(uploaded.data);
+                        return;
+                    }
+                    showBanner(uploaded
+                        ? 'No dependencies match the current filter.'
+                        : 'Your upload is no longer available in this tab. Please upload the TXT again.');
+                } catch (error) {
+                    console.error('Failed to process the uploaded data:', error);
+                    showBanner('Failed to process your upload. Please upload the TXT again.');
+                }
+            } else {
+                showBanner();
+            }
+            validateAndRender(defaultGraphData);
         });
     </script>
 </body>

@@ -287,108 +287,129 @@ body {
   min-width: 0;
 }
 
-/* File List */
-.file-list {
+/* Pre-compiled open source projects */
+.card h2 {
+  margin-top: 0;
+}
+
+.card-subtitle {
+  margin: -8px 0 var(--space-md);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.project-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-sm);
 }
 
-.file-item-wrapper {
+.project-item {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.file-item {
-  flex-grow: 1;
-  display: flex;
-  align-items: stretch;
-  padding: 0;
-  border-radius: var(--radius-sm);
-  transition: background-color 0.2s, transform 0.1s;
-  margin-bottom: 4px;
-  background-color: #f1f5f9;
-  transition: background-color 0.2s, transform 0.1s;
-  overflow: hidden;
-}
-
-.file-item:hover {
-  background-color: #e2e8f0;
-  transform: translateX(4px);
-}
-
-.file-select-btn {
-  background: none;
-  border: none;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
   color: inherit;
   font: inherit;
   text-align: left;
-  padding: 0;
   cursor: pointer;
-  flex-grow: 1;
-  min-width: 0; /* for text-overflow to work */
-  display: flex;
-  align-items: center;
+  transition: border-color 0.2s, background-color 0.2s, transform 0.1s;
 }
 
-.file-select-btn:focus-visible {
+.project-item:hover {
+  border-color: var(--primary);
+  background: #eff6ff;
+  transform: translateX(2px);
+}
+
+.project-item:focus-visible {
   outline: 2px solid var(--primary);
-  outline-offset: 1px;
-  border-radius: 2px;
+  outline-offset: 2px;
 }
 
-.file-item.active .file-select-btn:focus-visible {
-  outline-color: #ffffff;
+.project-item[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #ffffff;
 }
 
-.file-item.active {
-  background-color: var(--primary);
-  color: white;
+.project-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  color: #ffffff;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
-.file-select-btn.active:focus-visible {
-  outline-color: #ffffff;
+.project-item[aria-pressed="true"] .project-icon {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.file-name {
+.project-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.project-name {
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 100%;
 }
 
-.delete-btn {
-  background: none;
-  border: none;
-  color: #ff4444;
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0 var(--space-md);
+.project-stats {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.project-chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.project-item[aria-pressed="true"] .project-stats,
+.project-item[aria-pressed="true"] .project-chevron {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.privacy-note {
   display: flex;
   align-items: center;
-  opacity: 0.5;
-  transition: opacity 0.2s, background-color 0.2s;
+  gap: 6px;
+  margin: var(--space-sm) 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
-.delete-btn:hover,
-.delete-btn:focus-visible {
-  opacity: 1;
-  background-color: rgba(220, 38, 38, 0.1);
+.source-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
-.delete-btn:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
-  opacity: 1;
-  z-index: 1;
-}
-
-.file-item.active .delete-btn:focus-visible {
-  outline-color: white;
+.source-badge.upload {
+  background: #eff6ff;
+  color: var(--primary);
 }
 
 .empty-list {
@@ -470,87 +491,6 @@ body {
   background: #ffffff;
   color: #2563eb;
   border: 1px solid #bfdbfe;
-}
-
-.sample-chip {
-  background-color: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 9999px;
-  padding: 4px 12px;
-  font-size: 0.85rem;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.sample-chip:hover {
-  background-color: #e2e8f0;
-  color: #1e293b;
-  border-color: #cbd5e1;
-}
-
-/* Dialog Styles */
-#delete-confirm-dialog {
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 400px;
-  width: 90%;
-}
-
-#delete-confirm-dialog::backdrop {
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(2px);
-}
-
-#delete-confirm-dialog[open] {
-  animation: slideIn 0.2s ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-#delete-confirm-dialog form {
-  padding: var(--space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-#delete-confirm-dialog h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: var(--text-main);
-}
-
-#delete-confirm-dialog p {
-  margin: 0;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-md);
-  margin-top: var(--space-sm);
-}
-
-.delete-action-btn {
-  background-color: var(--danger);
-}
-
-.delete-action-btn:hover {
-  background-color: var(--danger-hover);
 }
 
 @media (max-width: 900px) {

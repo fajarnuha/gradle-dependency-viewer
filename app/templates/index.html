@@ -17,17 +17,17 @@
     </a>
     <header class="hero">
       <h1>Gradle Dependency Viewer</h1>
-      <p>Upload your dependency TXT file or choose from your past processed dependencies.</p>
+      <p>Upload your dependency TXT file or explore a pre-compiled open source project.</p>
     </header>
 
-    <div class="main-content" {% if deps_history != '1' %}style="align-items: stretch;"{% endif %}>
+    <div class="main-content">
       <aside class="sidebar">
-        <section class="card" id="upload-section" {% if deps_history != '1' %}style="flex-grow: 1; display: flex; flex-direction: column;"{% endif %}>
+        <section class="card" id="upload-section">
           <h2>Process New File</h2>
-          <form id="upload-form" class="upload-form" {% if deps_history != '1' %}style="flex-grow: 1;"{% endif %}>
-            <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="Upload dependency text file" {% if deps_history != '1' %}style="flex-grow: 1; justify-content: center;"{% endif %}>
+          <form id="upload-form" class="upload-form">
+            <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="Upload dependency text file">
               <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2" fill="none"
-                stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+                stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -37,24 +37,24 @@
             </div>
             <p class="error" id="upload-error" role="alert" aria-live="polite"></p>
           </form>
-          
-          <div id="sample-section" class="mt-4 pt-4 border-t border-gray-200 hidden">
-            <h3 class="text-sm font-semibold text-gray-500 mb-2">Try a Sample</h3>
-            <div id="sample-list" class="flex flex-wrap gap-2">
-              <!-- Populated by JavaScript -->
-            </div>
-          </div>
+          <p class="privacy-note">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+              <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+            </svg>
+            Processed on the fly. Nothing is stored on the server.
+          </p>
         </section>
 
-        {% if deps_history == '1' %}
-        <section class="card" id="history-section">
-          <h2>Past Dependencies</h2>
-          <ul id="file-list" class="file-list">
+        <section class="card" id="projects-section">
+          <h2>Pre-Compiled Open Source Projects</h2>
+          <p class="card-subtitle">Explore real-world dependency graphs, no upload needed.</p>
+          <ul id="sample-list" class="project-list">
             <!-- Populated by JavaScript -->
-            <li class="empty-list">No past files found.</li>
+            <li class="empty-list">Loading projects…</li>
           </ul>
         </section>
-        {% endif %}
       </aside>
 
       <section class="content-area">
@@ -62,8 +62,8 @@
           <div class="processing">
             <div class="spinner" aria-hidden="true"></div>
             <div>
-              <h2>Processing your TXT…</h2>
-              <p>Please wait while we parse your file.</p>
+              <h2>Processing…</h2>
+              <p>Please wait while we prepare the dependencies.</p>
             </div>
           </div>
         </section>
@@ -71,7 +71,8 @@
         <section class="card" id="welcome-state">
           <div class="welcome-box">
             <h2>Get Started</h2>
-            <p>Upload a Gradle dependency output (TXT) to visualize it as a graph.</p>
+            <p>Upload a Gradle dependency output (TXT) to visualize it as a graph, or pick one of the
+              pre-compiled open source projects.</p>
             <div class="hint-box">
               <div class="hint-header">
                 <h3>How to generate the TXT</h3>
@@ -93,6 +94,7 @@
 
         <section class="card hidden" id="ready-state">
           <div class="ready-header">
+            <span class="source-badge" id="source-badge"></span>
             <h2 id="current-file-name">JSON result is ready</h2>
             <p>Review the conversion details and open the visualizations.</p>
           </div>
@@ -144,17 +146,6 @@
       </section>
     </div>
   </main>
-
-  <dialog id="delete-confirm-dialog" class="confirm-dialog">
-    <form method="dialog">
-      <h2 id="dialog-title">Delete File?</h2>
-      <p id="dialog-desc">Are you sure you want to delete <strong id="delete-filename"></strong>? This action cannot be undone.</p>
-      <div class="dialog-actions">
-        <button value="cancel" class="secondary-btn">Cancel</button>
-        <button id="confirm-delete-btn" value="confirm" class="primary-btn delete-action-btn">Delete</button>
-      </div>
-    </form>
-  </dialog>
 
   <script src="/static/app.js"></script>
 </body>

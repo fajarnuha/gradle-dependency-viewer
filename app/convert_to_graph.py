@@ -194,12 +194,37 @@ def process_data(dependency_data, distance=None, exclude=None):
         'children': set()
     }
     
-    # Connect root to all first-level nodes
+    # Connect root to all first-level nodes (nodes without a parent)
     first_level_nodes = []
     for node_id, node_data in graph_nodes.items():
         if node_id != root_id and len(node_data['parents']) == 0:
             first_level_nodes.append(node_id)
-    
+
+    # Top-level dependencies that only appear inside a cycle (e.g. dependency
+    # constraints pointing at each other) have parents but are unreachable from
+    # the nodes above, so attach them to the root as well.
+    reachable = set()
+
+    def mark_reachable(start_id):
+        stack = [start_id]
+        while stack:
+            current = stack.pop()
+            if current in reachable:
+                continue
+            reachable.add(current)
+            stack.extend(edges.get(current, ()))
+
+    for node_id in first_level_nodes:
+        mark_reachable(node_id)
+
+    for node in root_nodes:
+        module = node.get('module', '')
+        version = node.get('version', '')
+        node_id = f"{module}:{version}" if version else module
+        if node_id in graph_nodes and node_id not in reachable:
+            first_level_nodes.append(node_id)
+            mark_reachable(node_id)
+
     for node_id in first_level_nodes:
         graph_nodes[root_id]['children'].add(node_id)
         graph_nodes[node_id]['parents'].add(root_id)

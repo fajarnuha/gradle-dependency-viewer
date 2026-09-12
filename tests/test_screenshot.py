@@ -13,8 +13,6 @@ PORT = 8001
 BASE_URL = f"http://localhost:{PORT}"
 
 def run_server():
-    # Disable history for consistent testing
-    os.environ["DEPS_HISTORY"] = "0"
     uvicorn.run(app, host="127.0.0.1", port=PORT)
 
 @pytest.fixture(scope="module", autouse=True)
@@ -34,9 +32,8 @@ def test_generate_screenshots(page: Page):
     # 1. Open Homepage
     page.goto(BASE_URL)
     
-    # Wait for samples to be visible
-    # We added #sample-list in the template and .sample-chip logic in JS
-    sample_chip = page.locator(".sample-chip").first
+    # Wait for the pre-compiled open source projects to be listed
+    sample_chip = page.locator("#sample-list .project-item").first
     sample_chip.wait_for()
     
     # Click the first sample

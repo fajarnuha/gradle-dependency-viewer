@@ -4,104 +4,1144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D3 Dependency Graph</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>Dependency Tree Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
     <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-muted: #f1f5f9;
+            --border: #e2e8f0;
+            --border-strong: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --text-faint: #94a3b8;
+            --primary: #2563eb;
+            --primary-soft: #eff6ff;
+            --edge: #cbd5e1;
+            --edge-path: #e11d48;
+            --match: #f59e0b;
+            --warn: #b45309;
+            --c-root: #0f172a;
+            --c-project: #10b981;
+            --c-android: #f59e0b;
+            --c-kotlin: #8b5cf6;
+            --c-external: #3b82f6;
+            --radius-lg: 14px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --shadow: 0 10px 25px -8px rgba(15, 23, 42, 0.18), 0 2px 6px -2px rgba(15, 23, 42, 0.08);
+            --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-            color: #1e293b;
+            height: 100%;
         }
 
-        .node rect {
-            cursor: pointer;
-            stroke-width: 1.5px;
+        body {
+            margin: 0;
+            font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+            font-size: 14px;
+            color: var(--text-main);
+            background: var(--bg-page);
+            overflow: hidden;
         }
 
-        .node .node-text {
-            font-size: 10px;
-            font-weight: 500;
-            fill: #1e293b;
+        button,
+        input {
+            font: inherit;
+            color: inherit;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .app {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* ---------- Sidebar ---------- */
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            padding: 20px;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            z-index: 20;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .back-link {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color .15s, border-color .15s, background-color .15s;
+        }
+
+        .back-link:hover,
+        .back-link:focus-visible {
+            color: var(--primary);
+            border-color: var(--primary);
+            background: var(--primary-soft);
+            outline: none;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .file-name {
+            margin: 2px 0 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        .banner {
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid #fcd34d;
+            background: #fffbeb;
+            color: #92400e;
+            font-size: 13px;
+        }
+
+        .banner a {
+            color: inherit;
+            font-weight: 600;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .stat {
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            background: var(--bg-muted);
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+        }
+
+        .stat-value {
+            display: block;
+            margin-top: 2px;
+            font-size: 20px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .section-title {
+            margin: 0 0 10px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            color: var(--text-faint);
             pointer-events: none;
         }
 
-        .node.node--internal rect {
-            fill: #dbeafe;
-            stroke: #3b82f6;
+        .search-box input {
+            width: 100%;
+            padding: 9px 44px 9px 34px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            background: var(--bg-card);
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
         }
 
-        .node.node--leaf rect {
-            fill: #fef9c3;
-            /* Yellow fill for leaf nodes */
-            stroke: #facc15;
-            /* Yellow stroke for leaf nodes */
+        .search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
         }
 
-        .node.node--searched rect {
-            stroke: #f59e0b !important;
-            stroke-width: 3px;
+        .search-box kbd {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
         }
 
-        .node--searched .node-text {
+        kbd {
+            display: inline-block;
+            min-width: 20px;
+            padding: 1px 5px;
+            border: 1px solid var(--border-strong);
+            border-bottom-width: 2px;
+            border-radius: 4px;
+            background: var(--bg-muted);
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .search-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 26px;
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .search-nav {
+            display: flex;
+            gap: 4px;
+        }
+
+        .mini-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .mini-btn:hover:not(:disabled) {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .mini-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .control {
+            margin-bottom: 12px;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .segmented {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: 1fr;
+            padding: 3px;
+            gap: 3px;
+            border-radius: var(--radius-md);
+            background: var(--bg-muted);
+        }
+
+        .segmented button {
+            padding: 5px 6px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: background-color .15s, color .15s;
+        }
+
+        .segmented button:hover {
+            background: var(--bg-card);
+            color: var(--text-main);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+        }
+
+        .segmented button:focus-visible,
+        .mini-btn:focus-visible,
+        .tool-btn:focus-visible,
+        .chip:focus-visible,
+        .link-btn:focus-visible,
+        .btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 1px;
+        }
+
+        .check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .check input {
+            accent-color: var(--primary);
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .legend-item .legend-label {
+            flex: 1;
+        }
+
+        .legend-count {
+            font-size: 12px;
+            color: var(--text-faint);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .legend-swatch {
+            flex-shrink: 0;
+            width: 4px;
+            height: 16px;
+            border-radius: 2px;
+        }
+
+        .legend-pill {
+            flex-shrink: 0;
+            min-width: 30px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: var(--bg-muted);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .legend-pill.changed {
+            background: #fef3c7;
+            color: var(--warn);
+        }
+
+        .shortcuts {
+            margin: auto 0 0;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 6px 10px;
+            font-size: 12px;
+            color: var(--text-muted);
+            align-items: center;
+        }
+
+        /* ---------- Canvas ---------- */
+        .canvas {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+            background-color: var(--bg-page);
+            background-image: radial-gradient(circle, #dbe3ee 1px, transparent 1px);
+            background-size: 22px 22px;
+        }
+
+        #graph-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        #graph-container svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            user-select: none;
+        }
+
+        #graph-container svg:active {
+            cursor: grabbing;
+        }
+
+        .header-strip {
+            fill: rgba(248, 250, 252, 0.9);
+            stroke: var(--border);
+        }
+
+        .level-header rect {
+            fill: rgba(255, 255, 255, 0.92);
+            stroke: var(--border);
+        }
+
+        .level-header text {
+            font-size: 11px;
             font-weight: 700;
-            fill: #b45309;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            fill: var(--text-muted);
         }
 
-        .node--faded {
-            opacity: 0.2;
+        .level-guide {
+            stroke: var(--border);
+            stroke-dasharray: 2 5;
         }
 
         .link {
             fill: none;
-            stroke: #94a3b8;
-            stroke-opacity: 0.8;
-            stroke-width: 1.5px;
+            stroke: var(--edge);
+            stroke-width: 1.5;
+            transition: stroke .15s, stroke-width .15s;
+        }
+
+        .link.is-path {
+            stroke: var(--edge-path);
+            stroke-width: 2.25;
+        }
+
+        .link.is-hover-path {
+            stroke: var(--primary);
+            stroke-width: 2;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: opacity .15s;
+        }
+
+        .node .card {
+            fill: var(--bg-card);
+            stroke: var(--border-strong);
+            stroke-width: 1;
+            transition: stroke .15s, fill .15s;
+        }
+
+        .node:hover .card {
+            stroke: var(--primary);
+        }
+
+        .node.is-root .card {
+            fill: var(--text-main);
+            stroke: var(--text-main);
+        }
+
+        .node.is-root .name {
+            fill: #fff;
+            font-weight: 700;
+        }
+
+        .node.is-repeated .card {
+            stroke-dasharray: 4 3;
+            fill: #fbfcfe;
+        }
+
+        .node.is-repeated .name {
+            fill: var(--text-muted);
+        }
+
+        .node.is-constraint .card {
+            fill: var(--bg-muted);
+            stroke-dasharray: 1.5 2.5;
+        }
+
+        .node.is-constraint .name {
+            font-style: italic;
+            fill: var(--text-muted);
+        }
+
+        .node .name {
+            font-size: 12px;
+            font-weight: 500;
+            fill: var(--text-main);
+            pointer-events: none;
+        }
+
+        .node .ver {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            fill: var(--text-faint);
+            pointer-events: none;
+        }
+
+        .node .ver .changed {
+            fill: var(--warn);
+            font-weight: 500;
+        }
+
+        .node .badge rect {
+            fill: var(--bg-muted);
+        }
+
+        .node .badge text {
+            font-size: 10.5px;
+            font-weight: 700;
+            fill: var(--text-muted);
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .node .badge.collapsed rect {
+            fill: var(--primary);
+        }
+
+        .node .badge.collapsed text {
+            fill: #fff;
+        }
+
+        .node.is-root .badge rect {
+            fill: rgba(255, 255, 255, 0.18);
+        }
+
+        .node.is-root .badge text {
+            fill: #fff;
+        }
+
+        .node.is-match .card {
+            fill: #fffbeb;
+            stroke: var(--match);
+            stroke-width: 2;
+        }
+
+        .node.is-hover-path .card {
+            stroke: var(--primary);
+        }
+
+        .node.is-on-path .card {
+            stroke: var(--edge-path);
+        }
+
+        .node.is-selected .card {
+            stroke: var(--edge-path);
+            stroke-width: 2.5;
+        }
+
+        .node.is-faded {
+            opacity: 0.28;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 4px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow);
+            z-index: 10;
+        }
+
+        .toolbar hr {
+            width: 100%;
+            margin: 2px 0;
+            border: 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .tool-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: background-color .15s, color .15s;
+        }
+
+        .tool-btn:hover {
+            background: var(--bg-muted);
+            color: var(--primary);
+        }
+
+        .tool-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .sidebar-toggle {
+            display: none;
+        }
+
+        .zoom-indicator {
+            position: absolute;
+            left: 16px;
+            bottom: 16px;
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            pointer-events: none;
+        }
+
+        /* Details panel */
+        .details {
+            position: absolute;
+            top: 16px;
+            right: 66px;
+            width: 340px;
+            max-height: calc(100% - 32px);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--bg-card);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            z-index: 10;
+            animation: panel-in .18s ease-out;
+        }
+
+        @keyframes panel-in {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+        }
+
+        .details-header {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .details-header .legend-swatch {
+            height: 38px;
+        }
+
+        .details-title {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .details-title h2 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .details-title p {
+            margin: 2px 0 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        .details-body {
+            padding: 12px 16px 16px;
+            overflow-y: auto;
+        }
+
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .badge-pill {
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--bg-muted);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .badge-pill.warn {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-pill.info {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .full-coord {
+            margin: 0 0 12px;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: var(--mono);
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .callout {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            background: var(--primary-soft);
+            font-size: 12px;
+            color: #1e3a8a;
+        }
+
+        .callout .btn {
+            align-self: flex-start;
+            flex: none;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .metric {
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-muted);
+            text-align: center;
+        }
+
+        .metric strong {
+            display: block;
+            font-size: 16px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .metric span {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .details-section {
+            margin-bottom: 14px;
+        }
+
+        .details-section h3 {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0 0 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        .details-section h3 i {
+            width: 10px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .path {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .path-step {
+            padding-left: 10px;
+            font-size: 11px;
+            color: var(--text-faint);
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            max-width: 100%;
+            padding: 3px 8px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--bg-card);
+            font-size: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: border-color .15s, background-color .15s;
+        }
+
+        .chip:hover {
+            border-color: var(--primary);
+            background: var(--primary-soft);
+        }
+
+        .chip span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chip .dot-sm {
+            flex-shrink: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .chip.is-current {
+            border-color: var(--edge-path);
+        }
+
+        .path .chip {
+            border-radius: var(--radius-sm);
+        }
+
+        .link-btn {
+            padding: 0;
+            border: 0;
+            background: none;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .muted {
+            font-size: 12px;
+            color: var(--text-faint);
+        }
+
+        .details-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-page);
+        }
+
+        .btn {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 7px 10px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color .15s, color .15s;
+        }
+
+        .btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            max-width: 340px;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            background: rgba(15, 23, 42, 0.94);
+            color: #f8fafc;
+            font-size: 12px;
+            line-height: 1.45;
+            pointer-events: none;
+            z-index: 30;
+            box-shadow: var(--shadow);
+        }
+
+        .tooltip strong {
+            display: block;
+            font-size: 13px;
+        }
+
+        .tooltip .tt-sub {
+            color: #94a3b8;
+            word-break: break-all;
+        }
+
+        .tooltip .tt-row {
+            margin-top: 4px;
+            color: #cbd5e1;
+        }
+
+        .toast {
+            position: absolute;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: var(--text-main);
+            color: #fff;
+            font-size: 13px;
+            box-shadow: var(--shadow);
+            z-index: 40;
+        }
+
+        @media (max-width: 860px) {
+            .sidebar {
+                position: absolute;
+                inset: 0 auto 0 0;
+                width: min(320px, 88vw);
+                transform: translateX(-100%);
+                transition: transform .2s ease;
+                box-shadow: var(--shadow);
+            }
+
+            .app.sidebar-open .sidebar {
+                transform: none;
+            }
+
+            .sidebar-toggle {
+                display: inline-flex;
+            }
+
+            .details {
+                left: 16px;
+                right: 66px;
+                width: auto;
+                max-height: 55%;
+                top: auto;
+                bottom: 16px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation: none !important;
+                transition: none !important;
+            }
         }
     </style>
 </head>
 
-<body class="overflow-hidden">
+<body>
+    <div class="app" id="app">
+        <aside class="sidebar" id="sidebar" aria-label="Tree controls">
+            <header class="sidebar-header">
+                <a href="/" class="back-link" aria-label="Back to home" title="Back to home">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                </a>
+                <div>
+                    <h1>Dependency Tree</h1>
+                    <p class="file-name" id="file-name">{{ file_name or 'Sample data' }}</p>
+                </div>
+            </header>
 
-    <div class="fixed top-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-b border-slate-200 z-10">
-        <div class="max-w-xl mx-auto">
-            <h1 class="text-xl font-bold text-center text-slate-800 mb-2">Dependency Graph Visualizer</h1>
-            <div id="no-data"
-                class="hidden mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                No data found. Please upload a TXT first. <a href="/" class="font-semibold underline">Go back</a>.
+            <div id="no-data" class="banner" hidden>
+                <span id="no-data-message">No data found. Please upload a TXT first.</span>
+                <a href="/">Go back</a>.
             </div>
-            <div class="space-y-2">
-                <div class="flex items-center space-x-2">
-                    <div class="relative flex-grow">
-                        <input type="text" id="search-box" placeholder="Search for a module..."
-                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow">
-                        <svg class="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                        </svg>
+
+            <section class="stats" aria-label="Tree statistics">
+                <div class="stat"><span class="stat-label">Entries</span><span class="stat-value" id="stat-entries">-</span></div>
+                <div class="stat"><span class="stat-label">Modules</span><span class="stat-value" id="stat-modules">-</span></div>
+                <div class="stat"><span class="stat-label">Depth</span><span class="stat-value" id="stat-depth">-</span></div>
+                <div class="stat"><span class="stat-label">Shown</span><span class="stat-value" id="stat-shown">-</span></div>
+            </section>
+
+            <section>
+                <h2 class="section-title"><label for="search-box">Search</label></h2>
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M21 21l-4.3-4.3" stroke-linecap="round" />
+                    </svg>
+                    <input type="text" id="search-box" placeholder="Module, group or version…" autocomplete="off"
+                        spellcheck="false">
+                    <kbd aria-hidden="true">/</kbd>
+                </div>
+                <div class="search-meta">
+                    <span id="search-count" aria-live="polite">Matches are expanded and highlighted</span>
+                    <span class="search-nav">
+                        <button class="mini-btn" id="search-prev" aria-label="Previous match" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" aria-hidden="true"><path d="M18 15l-6-6-6 6" /></svg>
+                        </button>
+                        <button class="mini-btn" id="search-next" aria-label="Next match" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                        </button>
+                    </span>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">Display</h2>
+                <div class="control">
+                    <span class="control-label" id="expand-label">Expand</span>
+                    <div class="segmented" role="group" aria-labelledby="expand-label">
+                        <button type="button" data-expand="1" id="toggle-all-btn" title="Collapse everything below the root">Collapse</button>
+                        <button type="button" data-expand="2">2 levels</button>
+                        <button type="button" data-expand="3">3 levels</button>
+                        <button type="button" data-expand="all">All</button>
                     </div>
-                    <button id="toggle-all-btn" title="Toggle Expand/Collapse All"
-                        class="flex-shrink-0 p-2 rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                        <svg id="expand-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v4m0 0h-4m4 0l-5-5" />
-                        </svg>
-                        <svg id="collapse-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600 hidden"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M4 8h4V4m0 0L4 8m0 0v4m0-4h4m11-4h-4v4m0 0L20 8m0 0v4m0-4h-4M4 16h4v4m0 0l-4-4m0 0v-4m0 4h4m11 4h-4v-4m0 0l4-4m0 0v-4m0 4h-4" />
+                </div>
+                <label class="check"><input type="checkbox" id="hide-constraints"> Hide dependency constraints (c)</label>
+                <label class="check"><input type="checkbox" id="show-versions" checked> Show versions</label>
+            </section>
+
+            <section>
+                <h2 class="section-title">Legend</h2>
+                <div class="legend" id="legend"></div>
+            </section>
+
+            <div class="shortcuts" aria-label="Keyboard and mouse shortcuts">
+                <kbd>/</kbd><span>Focus search</span>
+                <kbd>↑ ↓</kbd><span>Move selection</span>
+                <kbd>← →</kbd><span>Collapse / expand</span>
+                <kbd>F</kbd><span>Fit tree to screen</span>
+                <kbd>Scroll</kbd><span>Pan · <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + scroll to zoom</span>
+            </div>
+        </aside>
+
+        <main class="canvas" id="canvas">
+            <div id="graph-container"></div>
+
+            <div class="toolbar" role="toolbar" aria-label="Tree tools">
+                <button class="tool-btn sidebar-toggle" id="sidebar-toggle" aria-label="Toggle controls"
+                    title="Controls">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round" />
+                    </svg>
+                </button>
+                <button class="tool-btn" id="zoom-in" aria-label="Zoom in" title="Zoom in">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+                    </svg>
+                </button>
+                <button class="tool-btn" id="zoom-out" aria-label="Zoom out" title="Zoom out">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M5 12h14" stroke-linecap="round" />
+                    </svg>
+                </button>
+                <button class="tool-btn" id="zoom-fit" aria-label="Fit tree to screen" title="Fit to screen (F)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+                    </svg>
+                </button>
+                <button class="tool-btn" id="zoom-root" aria-label="Go to root" title="Go to root">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="9.5" width="6" height="5" rx="1" />
+                        <path d="M9 12h3M12 6v12M12 6h3M12 18h3" />
+                        <rect x="15" y="4" width="6" height="4" rx="1" />
+                        <rect x="15" y="16" width="6" height="4" rx="1" />
+                    </svg>
+                </button>
+            </div>
+
+            <aside class="details" id="details" aria-label="Selected dependency" hidden>
+                <div class="details-header">
+                    <span class="legend-swatch" id="details-swatch"></span>
+                    <div class="details-title">
+                        <h2 id="details-name"></h2>
+                        <p id="details-group"></p>
+                    </div>
+                    <button class="mini-btn" id="details-close" aria-label="Close details">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                            <path d="M18 6L6 18M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
-            </div>
-        </div>
-    </div>
+                <div class="details-body" id="details-body"></div>
+                <div class="details-actions">
+                    <button class="btn" id="details-center">Center</button>
+                    <button class="btn" id="details-expand">Expand all</button>
+                    <button class="btn" id="details-copy" title="Copy the group:artifact:version coordinate">Copy</button>
+                </div>
+            </aside>
 
-    <div id="graph-container" class="w-full h-screen pt-32"></div>
+            <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+            <div class="zoom-indicator" id="zoom-indicator">100%</div>
+            <div class="toast" id="toast" role="status" hidden></div>
+        </main>
+    </div>
 
     <script>
         // The default JSON data
@@ -135,376 +1175,1105 @@
                                 { "module": "androidx.lifecycle:lifecycle-runtime-very-long-name-for-testing-ellipsis", "version": "2.6.1", "resolution": "", "full": "androidx.lifecycle:lifecycle-runtime:2.6.1 -> 2.8.3", "children": [] }
                             ]
                         },
-                        { "module": "androidx.fragment:fragment", "version": "1.5.7", "resolution": "", "full": "androidx.fragment:fragment:1.5.7 -> 1.8.0", "children": [] }
+                        { "module": "androidx.fragment:fragment", "version": "1.5.7", "resolution": "", "full": "androidx.fragment:fragment:1.5.7 -> 1.8.0", "children": [] },
+                        { "module": "androidx.core:core-ktx", "version": "1.13.1", "resolution": "c", "full": "androidx.core:core-ktx:1.13.1 (c)", "children": [] }
                     ]
                 }
             ]
         };
 
-        const noDataBanner = document.getElementById('no-data');
-        let initialJsonData = defaultJsonData;
+        const CATEGORIES = [
+            { key: 'root', label: 'Root', color: 'var(--c-root)' },
+            { key: 'project', label: 'Project modules', color: 'var(--c-project)' },
+            { key: 'android', label: 'Android / Google', color: 'var(--c-android)' },
+            { key: 'kotlin', label: 'Kotlin / JetBrains', color: 'var(--c-kotlin)' },
+            { key: 'external', label: 'Other external', color: 'var(--c-external)' },
+        ];
+        const CATEGORY_ORDER = Object.fromEntries(CATEGORIES.map((c, i) => [c.key, i]));
 
-        async function loadInitialData() {
-            // Check for injected data from server (Jinja2)
-            const serverTreeData = {{ tree_data | tojson | safe
-        }};
+        const NODE_W = 240;
+        const NODE_H = 28;
+        const ROW_H = 36;
+        const COL_W = NODE_W + 70;
+        const BADGE_W = 32;
+        const ANIMATION_LIMIT = 900; // above this many visible nodes, updates are applied without animation
 
-        if (serverTreeData) {
-            initialJsonData = serverTreeData;
-            renderGraph(initialJsonData);
-            return;
+        function categoryOf(module) {
+            if (module.startsWith('project ')) return 'project';
+            if (module.includes('android') || module.includes('google')) return 'android';
+            if (module.includes('kotlin') || module.includes('jetbrains')) return 'kotlin';
+            return 'external';
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const fileName = urlParams.get('file');
+        const colorOf = info => CATEGORIES[CATEGORY_ORDER[info.category]].color;
 
-        if (fileName) {
-            try {
-                const response = await fetch(`/static/data/${fileName}`);
-                if (!response.ok) throw new Error('File not found');
-                initialJsonData = await response.json();
-            } catch (error) {
-                console.error('Failed to fetch file:', error);
-                noDataBanner.classList.remove('hidden');
-                noDataBanner.textContent = `Failed to load ${fileName}. Showing default data.`;
-            }
-        } else {
-            const storedRaw = localStorage.getItem('last_result_json');
-            if (storedRaw) {
-                try {
-                    initialJsonData = JSON.parse(storedRaw);
-                } catch (error) {
-                    console.error('Failed to parse stored JSON:', error);
-                }
-            } else {
-                noDataBanner.classList.remove('hidden');
-            }
-        }
-
-        renderGraph(initialJsonData);
-        }
+        // ------------------------------------------------------------------
+        // State
+        // ------------------------------------------------------------------
+        const settings = { hideConstraints: false, showVersions: true };
+        const state = {
+            treeData: null,
+            rootName: 'Root dependencies',
+            selected: null,
+            hovered: null,
+            matches: [],
+            matchIndex: -1,
+            occurrences: new Map(),
+        };
 
         let root;
-        let gNode, gLink, svg;
-        let isTreeExpanded = false;
-        let nodeIdCounter = 0;
+        let svg, zoomLayer, linkLayer, nodeLayer, headerLayer, zoom;
+        let currentTransform = d3.zoomIdentity;
+        let uidCounter = 0;
 
-        function renderGraph(jsonData) {
-            const container = document.getElementById('graph-container');
-            container.innerHTML = '';
+        // ------------------------------------------------------------------
+        // Label measurement (canvas based: much faster than getBBox on thousands of nodes)
+        // ------------------------------------------------------------------
+        const measureCtx = document.createElement('canvas').getContext('2d');
+        const FONT_NAME = '500 12px Inter, "Segoe UI", system-ui, sans-serif';
+        const FONT_VER = '10.5px "JetBrains Mono", ui-monospace, Menlo, monospace';
 
-            const width = container.clientWidth;
-            const height = container.clientHeight;
+        function textWidth(text, font) {
+            measureCtx.font = font;
+            return measureCtx.measureText(text).width;
+        }
 
+        function ellipsize(text, font, maxWidth) {
+            if (maxWidth <= 0) return '';
+            if (textWidth(text, font) <= maxWidth) return text;
+            let lo = 0, hi = text.length;
+            while (lo < hi) {
+                const mid = Math.ceil((lo + hi) / 2);
+                if (textWidth(text.slice(0, mid) + '…', font) <= maxWidth) lo = mid;
+                else hi = mid - 1;
+            }
+            return lo ? text.slice(0, lo) + '…' : '';
+        }
+
+        // ------------------------------------------------------------------
+        // Data preparation
+        // ------------------------------------------------------------------
+        function describe(data) {
+            let module = data.module || '';
+            let requested = data.version || '';
+            let resolved = '';
+            // Some entries carry the resolved version in the module itself ("group:artifact -> 1.4.3").
+            if (module.includes(' -> ')) {
+                const [m, r] = module.split(' -> ');
+                module = m.trim();
+                resolved = r.trim();
+            }
+            const full = data.full || module;
+            // "group:artifact:1.1.0 -> 1.6.0": the parser stores the resolved version in `version`,
+            // so the requested version has to be read back from the full coordinate.
+            if (full.includes('->')) {
+                const [left, right] = full.split('->');
+                const parts = left.trim().split(':');
+                requested = parts.length > 2 ? parts[2].trim() : '';
+                resolved = right.replace(/\((\*|c|n)\)/g, '').trim();
+            }
+            // Rich versions such as "{strictly 1.7.8}" are shown as the plain version.
+            const cleanVersion = v => v.replace(/^\{(?:strictly|require|prefer)\s+([^}]+)\}$/, '$1').trim();
+            requested = cleanVersion(requested);
+            resolved = cleanVersion(resolved);
+            const isProject = module.startsWith('project ');
+            const idx = module.lastIndexOf(':');
+            const name = isProject || idx === -1 ? module : module.slice(idx + 1);
+            const group = isProject || idx === -1 ? '' : module.slice(0, idx);
+            return {
+                module,
+                name,
+                group,
+                requested,
+                resolved: resolved && resolved !== requested ? resolved : '',
+                full,
+                category: categoryOf(module),
+                repeated: data.resolution === '*' || /\(\*\)\s*$/.test(full),
+                constraint: data.resolution === 'c' || /\(c\)\s*$/.test(full),
+            };
+        }
+
+        function prepareData(jsonData) {
             let rootNodes = jsonData.root;
+            let rootName = 'Root dependencies';
             if (!rootNodes) {
                 // Find first key that is an array and not raw_txt
                 for (const key in jsonData) {
                     if (Array.isArray(jsonData[key]) && key !== 'raw_txt') {
                         rootNodes = jsonData[key];
+                        rootName = key;
                         break;
                     }
                 }
             }
+            const treeData = { module: rootName, children: rootNodes || [], isRoot: true };
 
-            const data = {
-                module: "Root Dependencies",
-                children: rootNodes || []
+            const modules = new Set();
+            let entries = 0;
+            let maxDepth = 0;
+            const walk = (node, depth) => {
+                node._uid = ++uidCounter;
+                node._info = node.isRoot
+                    ? { module: rootName, name: rootName, group: '', requested: '', resolved: '', full: rootName, category: 'root', repeated: false, constraint: false }
+                    : describe(node);
+                if (!node.isRoot) {
+                    entries++;
+                    modules.add(node._info.module);
+                    maxDepth = Math.max(maxDepth, depth);
+                }
+                (node.children || []).forEach(child => walk(child, depth + 1));
             };
+            walk(treeData, 0);
 
-            root = d3.hierarchy(data);
+            state.treeData = treeData;
+            // Expanded branches are tracked by data uid so they survive hierarchy rebuilds (filter toggles).
+            state.expanded = new Set([treeData._uid]);
+            state.rootName = rootName;
+            document.getElementById('stat-entries').textContent = entries.toLocaleString();
+            document.getElementById('stat-modules').textContent = modules.size.toLocaleString();
+            document.getElementById('stat-depth').textContent = maxDepth;
+        }
 
-            svg = d3.create("svg")
-                .attr("width", width)
-                .attr("height", height)
-                .attr("viewBox", [-width / 2, -height / 2, width, height]);
+        const kidsOf = d => d.children || d._children || null;
 
-            gLink = svg.append("g")
-                .attr("class", "links")
-                .attr("fill", "none")
-                .attr("stroke", "#94a3b8")
-                .attr("stroke-opacity", 0.8)
-                .attr("stroke-width", 1.5);
+        // Visit every node, including those inside collapsed branches.
+        function eachAll(fn) {
+            const stack = [root];
+            while (stack.length) {
+                const d = stack.pop();
+                fn(d);
+                const kids = kidsOf(d);
+                if (kids) for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
+            }
+        }
 
-            gNode = svg.append("g")
-                .attr("class", "nodes")
-                .attr("cursor", "pointer")
-                .attr("pointer-events", "all");
+        // Build (or rebuild) the hierarchy, preserving which branches are expanded.
+        function buildHierarchy() {
+            const expanded = state.expanded;
+            const selectedUid = state.selected ? state.selected.data._uid : null;
 
+            root = d3.hierarchy(state.treeData, d => {
+                if (!d.children || !d.children.length) return null;
+                const kids = settings.hideConstraints ? d.children.filter(c => !c._info.constraint) : d.children;
+                return kids.length ? kids : null;
+            });
+
+            // Index every occurrence of a module (pre-order = the order Gradle prints them).
+            state.occurrences = new Map();
+            root.eachBefore(d => {
+                if (d === root) return;
+                const key = d.data._info.module;
+                if (!state.occurrences.has(key)) state.occurrences.set(key, []);
+                state.occurrences.get(key).push(d);
+            });
+
+            // Collapse bottom-up so that nested branches keep their own expanded state.
+            let selected = null;
+            root.eachAfter(d => {
+                if (d.data._uid === selectedUid) selected = d;
+                if (d.children && !expanded.has(d.data._uid)) {
+                    d._children = d.children;
+                    d.children = null;
+                }
+            });
+            state.selected = selected;
+            state.hovered = null;
             root.x0 = 0;
             root.y0 = 0;
+            computeLabels();
+        }
 
-            root.children.forEach(collapse);
-            update(root);
+        function computeLabels() {
+            eachAll(d => {
+                const info = d.data._info;
+                const hasBadge = !!kidsOf(d) || info.repeated || info.constraint;
+                const available = NODE_W - 14 - 10 - (hasBadge ? BADGE_W + 6 : 0);
+                let ver = '';
+                if (settings.showVersions && !d.data.isRoot) {
+                    ver = info.resolved ? `${info.requested ? info.requested + ' ' : ''}→ ${info.resolved}` : info.requested;
+                }
+                let verWidth = ver ? Math.min(textWidth(ver, FONT_VER), available * 0.48) : 0;
+                const verText = ver ? ellipsize(ver, FONT_VER, verWidth + 0.5) : '';
+                const nameMax = available - (verText ? verWidth + 8 : 0);
+                d.label = {
+                    name: ellipsize(info.name, FONT_NAME, nameMax),
+                    ver: verText,
+                    verX: NODE_W - 10 - (hasBadge ? BADGE_W + 6 : 0),
+                };
+            });
+        }
 
-            container.append(svg.node());
+        // ------------------------------------------------------------------
+        // Rendering
+        // ------------------------------------------------------------------
+        function renderTree(jsonData) {
+            prepareData(jsonData);
+            root = null;
+            buildHierarchy();
 
-            const zoom = d3.zoom()
-                .scaleExtent([0.1, 5])
-                .on('zoom', (event) => {
-                    const { transform } = event;
-                    gNode.attr('transform', transform);
-                    gLink.attr('transform', transform);
+            const container = document.getElementById('graph-container');
+            container.innerHTML = '';
+            svg = d3.select(container).append('svg')
+                .attr('role', 'img')
+                .attr('aria-label', 'Dependency tree');
 
-                    // Hide text when zoomed out for performance
-                    const k = transform.k;
-                    gNode.selectAll('text').attr('display', k > 0.4 ? 'block' : 'none');
+            zoomLayer = svg.append('g').attr('class', 'zoom-layer');
+            const guideLayer = zoomLayer.append('g').attr('class', 'guides');
+            linkLayer = zoomLayer.append('g').attr('class', 'links');
+            nodeLayer = zoomLayer.append('g').attr('class', 'nodes');
+            headerLayer = svg.append('g').attr('class', 'level-headers');
+            headerLayer.append('rect').attr('class', 'header-strip').attr('height', 46);
+            state.guideLayer = guideLayer;
+
+            zoom = d3.zoom()
+                .scaleExtent([0.05, 3])
+                // Plain wheel pans (see below); ctrl/⌘ + wheel and trackpad pinch zoom.
+                .filter(event => (event.type === 'wheel' ? (event.ctrlKey || event.metaKey) : !event.button))
+                .on('zoom', event => {
+                    currentTransform = event.transform;
+                    zoomLayer.attr('transform', currentTransform);
+                    document.getElementById('zoom-indicator').textContent = `${Math.round(currentTransform.k * 100)}%`;
+                    drawHeaders();
+                    hideTooltip();
+                });
+            svg.call(zoom).on('dblclick.zoom', null);
+            svg.on('wheel.pan', event => {
+                if (event.ctrlKey || event.metaKey) return;
+                event.preventDefault();
+                const k = currentTransform.k;
+                const dx = event.shiftKey && !event.deltaX ? event.deltaY : event.deltaX;
+                const dy = event.shiftKey && !event.deltaX ? 0 : event.deltaY;
+                svg.call(zoom.translateBy, -dx / k, -dy / k);
+            }, { passive: false });
+            svg.on('click', event => {
+                if (event.target === svg.node()) select(null);
+            });
+
+            renderLegend();
+            update(root, { anchor: false, animate: false });
+            placeRoot();
+        }
+
+        function update(source, { anchor = true, animate = true } = {}) {
+            const before = source ? [currentTransform.applyX(source.y0 ?? 0), currentTransform.applyY(source.x0 ?? 0)] : null;
+
+            d3.tree()
+                .nodeSize([ROW_H, COL_W])
+                .separation((a, b) => (a.parent === b.parent ? 1 : 1.3))(root);
+
+            const nodes = root.descendants();
+            const links = root.links();
+            const duration = animate && nodes.length <= ANIMATION_LIMIT && !reducedMotion() ? 260 : 0;
+            const from = source || root;
+            const t = sel => (duration ? sel.transition().duration(duration) : sel);
+
+            // Nodes
+            const node = nodeLayer.selectAll('g.node').data(nodes, d => d.data._uid);
+
+            const nodeEnter = node.enter().append('g')
+                .attr('class', 'node')
+                .attr('transform', `translate(${from.y0 ?? 0},${from.x0 ?? 0})`)
+                .attr('opacity', duration ? 0 : 1)
+                .on('click', (event, d) => {
+                    event.stopPropagation();
+                    select(d);
+                    if (kidsOf(d)) toggle(d);
+                })
+                .on('mouseenter', (event, d) => hover(d, event))
+                .on('mousemove', event => moveTooltip(event))
+                .on('mouseleave', () => hover(null));
+
+            nodeEnter.append('rect')
+                .attr('class', 'card')
+                .attr('y', -NODE_H / 2)
+                .attr('width', NODE_W)
+                .attr('height', NODE_H)
+                .attr('rx', 7);
+            nodeEnter.append('rect')
+                .attr('class', 'accent')
+                .attr('x', 4)
+                .attr('y', -NODE_H / 2 + 6)
+                .attr('width', 3)
+                .attr('height', NODE_H - 12)
+                .attr('rx', 1.5);
+            nodeEnter.append('text')
+                .attr('class', 'name')
+                .attr('x', 14)
+                .attr('dy', '0.35em');
+            nodeEnter.append('text')
+                .attr('class', 'ver')
+                .attr('text-anchor', 'end')
+                .attr('dy', '0.35em');
+            const badgeEnter = nodeEnter.append('g')
+                .attr('class', 'badge')
+                .attr('transform', `translate(${NODE_W - BADGE_W - 6},0)`);
+            badgeEnter.append('rect')
+                .attr('y', -9)
+                .attr('width', BADGE_W)
+                .attr('height', 18)
+                .attr('rx', 9);
+            badgeEnter.append('text')
+                .attr('x', BADGE_W / 2)
+                .attr('dy', '0.35em');
+
+            const nodeUpdate = node.merge(nodeEnter);
+            nodeUpdate
+                .attr('class', d => {
+                    const info = d.data._info;
+                    return [
+                        'node',
+                        d === root ? 'is-root' : '',
+                        info.repeated ? 'is-repeated' : '',
+                        info.constraint ? 'is-constraint' : '',
+                    ].filter(Boolean).join(' ');
+                })
+                .attr('aria-expanded', d => (kidsOf(d) ? String(!!d.children) : null));
+            nodeUpdate.select('.accent')
+                .style('fill', d => colorOf(d.data._info))
+                .attr('display', d => (d === root ? 'none' : null));
+            nodeUpdate.select('.name').text(d => d.label.name);
+            nodeUpdate.select('.ver')
+                .attr('x', d => d.label.verX)
+                .each(function (d) {
+                    const info = d.data._info;
+                    const text = d3.select(this);
+                    text.selectAll('tspan').remove();
+                    text.text(null);
+                    if (!d.label.ver) return;
+                    const arrow = d.label.ver.indexOf('→');
+                    if (arrow === -1) {
+                        text.text(d.label.ver);
+                    } else {
+                        text.append('tspan').text(d.label.ver.slice(0, arrow));
+                        text.append('tspan').attr('class', 'changed').text(d.label.ver.slice(arrow));
+                    }
+                });
+            nodeUpdate.select('.badge')
+                .attr('display', d => (kidsOf(d) || d.data._info.repeated || d.data._info.constraint ? null : 'none'))
+                .classed('collapsed', d => !!d._children)
+                .select('text')
+                .text(d => {
+                    const kids = kidsOf(d);
+                    if (kids) return d._children ? `+${kids.length}` : kids.length;
+                    if (d.data._info.repeated) return '↺';
+                    return 'c';
                 });
 
-            svg.call(zoom);
+            t(nodeUpdate)
+                .attr('transform', d => `translate(${d.y},${d.x})`)
+                .attr('opacity', 1);
+
+            t(node.exit())
+                .attr('transform', `translate(${from.y},${from.x})`)
+                .attr('opacity', 0)
+                .remove();
+
+            // Links: smooth horizontal curves from the parent's right edge to the child's left edge.
+            const linkGen = d3.linkHorizontal().x(p => p.y).y(p => p.x);
+            const collapsedAt = p => ({ x: p.x, y: p.y + NODE_W });
+            const link = linkLayer.selectAll('path.link').data(links, d => d.target.data._uid);
+            const linkEnter = link.enter().append('path')
+                .attr('class', 'link')
+                .attr('d', () => {
+                    const o = { x: from.x0 ?? 0, y: (from.y0 ?? 0) + NODE_W };
+                    return linkGen({ source: o, target: o });
+                });
+            t(link.merge(linkEnter))
+                .attr('d', d => linkGen({ source: collapsedAt(d.source), target: d.target }));
+            t(link.exit())
+                .attr('d', () => {
+                    const o = collapsedAt(from);
+                    return linkGen({ source: o, target: o });
+                })
+                .remove();
+
+            root.eachBefore(d => {
+                d.x0 = d.x;
+                d.y0 = d.y;
+            });
+
+            // Keep the node the user interacted with at the same place on screen.
+            if (anchor && source && before) {
+                const nowX = currentTransform.applyX(source.y);
+                const nowY = currentTransform.applyY(source.x);
+                const next = currentTransform.translate((before[0] - nowX) / currentTransform.k, (before[1] - nowY) / currentTransform.k);
+                (duration ? svg.transition().duration(duration) : svg).call(zoom.transform, next);
+            }
+
+            document.getElementById('stat-shown').textContent = (nodes.length - 1).toLocaleString();
+            drawGuides(nodes);
+            drawHeaders();
+            applyHighlight();
         }
 
-        // --- Core Functions ---
-        function collapse(d) {
+        function drawGuides(nodes) {
+            const maxDepth = d3.max(nodes, d => d.depth) || 0;
+            const [x0, x1] = d3.extent(nodes, d => d.x);
+            state.visibleDepth = maxDepth;
+            state.guideLayer.selectAll('line')
+                .data(d3.range(1, maxDepth + 1))
+                .join('line')
+                .attr('class', 'level-guide')
+                .attr('x1', d => d * COL_W - 20)
+                .attr('x2', d => d * COL_W - 20)
+                .attr('y1', x0 - ROW_H)
+                .attr('y2', x1 + ROW_H);
+        }
+
+        // Column headers stick to the top of the viewport and follow horizontal pan / zoom.
+        function drawHeaders() {
+            if (!headerLayer) return;
+            const depth = state.visibleDepth || 0;
+            const k = currentTransform.k;
+            const data = k < 0.3 ? [] : d3.range(0, depth + 1);
+            headerLayer.select('.header-strip')
+                .attr('width', svg.node().clientWidth)
+                .attr('display', data.length ? null : 'none');
+            const header = headerLayer.selectAll('g.level-header')
+                .data(data)
+                .join(enter => {
+                    const g = enter.append('g').attr('class', 'level-header');
+                    g.append('rect').attr('height', 22).attr('rx', 11);
+                    g.append('text').attr('y', 15);
+                    return g;
+                });
+            header.attr('transform', d => `translate(${currentTransform.applyX(d * COL_W)},12)`);
+            header.select('text')
+                .attr('x', 10)
+                .text(d => (d === 0 ? 'Root' : `Level ${d}`));
+            header.select('rect')
+                .attr('width', d => (d === 0 ? 52 : 70 + (d > 9 ? 7 : 0)));
+        }
+
+        // ------------------------------------------------------------------
+        // Expand / collapse
+        // ------------------------------------------------------------------
+        // Sync children/_children of the hierarchy below `start` with state.expanded.
+        function applyExpansion(start) {
+            const stack = [start];
+            while (stack.length) {
+                const d = stack.pop();
+                const kids = kidsOf(d);
+                if (!kids) continue;
+                if (d === root || state.expanded.has(d.data._uid)) {
+                    d.children = kids;
+                    d._children = null;
+                } else {
+                    d._children = kids;
+                    d.children = null;
+                }
+                stack.push(...kids);
+            }
+        }
+
+        function toggle(d) {
             if (d.children) {
+                state.expanded.delete(d.data._uid);
                 d._children = d.children;
-                d._children.forEach(collapse);
                 d.children = null;
-            }
-        }
-
-        function expand(d) {
-            if (d._children) {
-                d.children = d._children;
-                d._children = null;
-            }
-            if (d.children) {
-                d.children.forEach(expand);
-            }
-        }
-
-        function toggleChildren(event, d) {
-            if (d.children) {
-                d._children = d.children;
-                d.children = null;
-            } else {
+            } else if (d._children) {
+                state.expanded.add(d.data._uid);
                 d.children = d._children;
                 d._children = null;
             }
             update(d);
         }
 
-        function wrapText(textSelection) {
-            const nodeWidth = 180;
-            textSelection.each(function () {
-                const text = d3.select(this);
-                const content = text.text();
-                const padding = 24;
-                const maxWidth = nodeWidth - padding;
-                let textLength = text.node().getBBox().width;
+        // Expansion is recorded on the raw data (not only the rendered hierarchy), so branches that are
+        // currently hidden by the constraint filter open too once the filter is turned off.
+        function expandSubtree(d) {
+            (function mark(node) {
+                if (!node.children || !node.children.length) return;
+                state.expanded.add(node._uid);
+                node.children.forEach(mark);
+            })(d.data);
+            applyExpansion(d);
+            update(d);
+        }
 
-                if (textLength <= maxWidth) return;
+        function expandToLevel(level) {
+            (function mark(node, depth) {
+                if (!node.children || !node.children.length) return;
+                if (depth < level) state.expanded.add(node._uid);
+                else state.expanded.delete(node._uid);
+                node.children.forEach(child => mark(child, depth + 1));
+            })(state.treeData, 0);
+            applyExpansion(root);
+            update(root);
+        }
 
-                let truncatedContent = content;
-                while (textLength > maxWidth && truncatedContent.length > 0) {
-                    truncatedContent = truncatedContent.slice(0, -1);
-                    text.text(truncatedContent + '...');
-                    textLength = text.node().getBBox().width;
+        // Expand every ancestor of d so that it becomes visible.
+        function reveal(d) {
+            let changed = false;
+            for (let a = d.parent; a; a = a.parent) {
+                state.expanded.add(a.data._uid);
+                if (a._children) {
+                    a.children = a._children;
+                    a._children = null;
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+
+        function jumpTo(d) {
+            if (reveal(d)) update(root, { anchor: false });
+            select(d);
+            centerOn(d);
+        }
+
+        // ------------------------------------------------------------------
+        // Highlight / selection
+        // ------------------------------------------------------------------
+        function applyHighlight() {
+            if (!nodeLayer) return;
+            const selectedPath = new Set(state.selected ? state.selected.ancestors() : []);
+            const hoverPath = new Set(state.hovered ? state.hovered.ancestors() : []);
+            const matches = new Set(state.matches);
+            const searching = searchBox.value.trim() !== '';
+            const matchContext = new Set();
+            if (searching) state.matches.forEach(m => m.ancestors().forEach(a => matchContext.add(a)));
+
+            nodeLayer.selectAll('g.node')
+                .classed('is-selected', d => d === state.selected)
+                .classed('is-on-path', d => selectedPath.has(d) && d !== state.selected)
+                .classed('is-hover-path', d => hoverPath.has(d))
+                .classed('is-match', d => matches.has(d))
+                .classed('is-faded', d => searching && !matchContext.has(d) && !selectedPath.has(d));
+
+            linkLayer.selectAll('path.link')
+                .classed('is-path', d => selectedPath.has(d.target))
+                .classed('is-hover-path', d => hoverPath.has(d.target) && !selectedPath.has(d.target))
+                .filter(d => selectedPath.has(d.target) || hoverPath.has(d.target))
+                .raise();
+        }
+
+        function hover(d, event) {
+            state.hovered = d;
+            applyHighlight();
+            if (d && event) showTooltip(d, event);
+            else hideTooltip();
+        }
+
+        function select(d) {
+            state.selected = d;
+            applyHighlight();
+            renderDetails();
+        }
+
+        // ------------------------------------------------------------------
+        // Tooltip & details
+        // ------------------------------------------------------------------
+        const tooltip = document.getElementById('tooltip');
+
+        function el(tag, props = {}, children = []) {
+            const node = document.createElement(tag);
+            Object.entries(props).forEach(([k, v]) => {
+                if (k === 'class') node.className = v;
+                else if (k === 'text') node.textContent = v;
+                else if (k === 'style') Object.assign(node.style, v);
+                else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+                else node.setAttribute(k, v);
+            });
+            children.forEach(c => c && node.append(c));
+            return node;
+        }
+
+        function markerNotes(info) {
+            return [
+                info.resolved ? `Requested ${info.requested || 'version'} → Gradle resolved ${info.resolved}` : null,
+                info.repeated ? '(*) Already listed earlier — children are shown at the first occurrence' : null,
+                info.constraint ? '(c) Dependency constraint, not a direct dependency' : null,
+            ].filter(Boolean);
+        }
+
+        // replaceChildren() would render null placeholders as the text "null".
+        function setChildren(node, ...children) {
+            node.replaceChildren(...children.filter(Boolean));
+        }
+
+        function showTooltip(d, event) {
+            const info = d.data._info;
+            const kids = kidsOf(d);
+            setChildren(tooltip,
+                el('strong', { text: info.name }),
+                info.group ? el('div', { class: 'tt-sub', text: info.group }) : null,
+                el('div', { class: 'tt-row', text: [
+                    d === root ? null : `level ${d.depth}`,
+                    kids ? `${kids.length} direct ${kids.length === 1 ? 'dependency' : 'dependencies'}` : null,
+                ].filter(Boolean).join(' · ') }),
+                ...markerNotes(info).map(text => el('div', { class: 'tt-row', text })),
+            );
+            tooltip.hidden = false;
+            moveTooltip(event);
+        }
+
+        function moveTooltip(event) {
+            if (tooltip.hidden) return;
+            const bounds = document.getElementById('canvas').getBoundingClientRect();
+            let x = event.clientX - bounds.left + 14;
+            let y = event.clientY - bounds.top + 14;
+            const w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+            if (x + w > bounds.width - 8) x = event.clientX - bounds.left - w - 14;
+            if (y + h > bounds.height - 8) y = event.clientY - bounds.top - h - 14;
+            tooltip.style.left = `${x}px`;
+            tooltip.style.top = `${y}px`;
+        }
+
+        function hideTooltip() {
+            tooltip.hidden = true;
+        }
+
+        function nodeChip(d, { label, current = false } = {}) {
+            const info = d.data._info;
+            return el('button', {
+                class: `chip${current ? ' is-current' : ''}`,
+                type: 'button',
+                title: info.full,
+                onclick: () => jumpTo(d),
+            }, [
+                el('i', { class: 'dot-sm', style: { background: colorOf(info) } }),
+                el('span', { text: label || (info.requested ? `${info.name}:${info.requested}` : info.name) }),
+            ]);
+        }
+
+        function subtreeSize(d) {
+            let count = -1;
+            const stack = [d];
+            while (stack.length) {
+                const n = stack.pop();
+                count++;
+                const kids = kidsOf(n);
+                if (kids) stack.push(...kids);
+            }
+            return count;
+        }
+
+        function firstExpandedOccurrence(d) {
+            const list = state.occurrences.get(d.data._info.module) || [];
+            return list.find(o => o !== d && kidsOf(o)) || null;
+        }
+
+        function renderDetails() {
+            const panel = document.getElementById('details');
+            const d = state.selected;
+            if (!d) {
+                panel.hidden = true;
+                return;
+            }
+            panel.hidden = false;
+            const info = d.data._info;
+            const kids = kidsOf(d) || [];
+            const isRoot = d === root;
+
+            document.getElementById('details-swatch').style.background = colorOf(info);
+            document.getElementById('details-name').textContent = info.name;
+            document.getElementById('details-group').textContent = info.group || (isRoot ? 'Configuration root' : '');
+
+            const badges = el('div', { class: 'badges' }, [
+                info.requested ? el('span', { class: 'badge-pill info', text: `v${info.requested}` }) : null,
+                info.resolved ? el('span', { class: 'badge-pill warn', text: `→ resolved ${info.resolved}` }) : null,
+                el('span', { class: 'badge-pill', text: CATEGORIES[CATEGORY_ORDER[info.category]].label }),
+                info.constraint ? el('span', { class: 'badge-pill', text: 'Constraint (c)' }) : null,
+                info.repeated ? el('span', { class: 'badge-pill', text: 'Repeated (*)' }) : null,
+            ]);
+
+            let callout = null;
+            if (info.repeated) {
+                const first = firstExpandedOccurrence(d);
+                callout = el('div', { class: 'callout' }, [
+                    el('span', { text: 'Gradle already listed this dependency, so its children are omitted here.' }),
+                    first
+                        ? el('button', { class: 'btn', type: 'button', text: 'Go to first occurrence', onclick: () => jumpTo(first) })
+                        : el('span', { class: 'muted', text: 'No expanded occurrence found in this view.' }),
+                ]);
+            }
+
+            const metrics = el('div', { class: 'metrics' }, [
+                el('div', { class: 'metric' }, [el('strong', { text: d.depth }), el('span', { text: 'Level' })]),
+                el('div', { class: 'metric' }, [el('strong', { text: kids.length }), el('span', { text: 'Direct deps' })]),
+                el('div', { class: 'metric' }, [el('strong', { text: subtreeSize(d).toLocaleString() }), el('span', { text: 'In subtree' })]),
+            ]);
+
+            const pathEl = el('div', { class: 'path' });
+            d.ancestors().reverse().forEach((n, i) => {
+                if (i > 0) pathEl.append(el('span', { class: 'path-step', text: '↓' }));
+                pathEl.append(nodeChip(n, { current: n === d }));
+            });
+
+            const occurrences = isRoot ? [] : (state.occurrences.get(info.module) || []);
+            const occurrenceList = el('div', { class: 'chips' });
+            const renderOccurrences = limit => {
+                occurrenceList.replaceChildren(...occurrences.slice(0, limit).map(o => nodeChip(o, {
+                    current: o === d,
+                    label: `${o.parent === root ? 'root' : o.parent.data._info.name} › ${o.data._info.requested || o.data._info.name}${o.data._info.repeated ? ' (*)' : ''}`,
+                })));
+                if (occurrences.length > limit) {
+                    occurrenceList.append(el('button', {
+                        class: 'link-btn', type: 'button', text: `+${occurrences.length - limit} more`,
+                        onclick: () => renderOccurrences(occurrences.length),
+                    }));
+                }
+            };
+            renderOccurrences(12);
+
+            const sectionTitle = (text, color) => el('h3', {}, [
+                color ? el('i', { style: { background: color } }) : null,
+                document.createTextNode(text),
+            ]);
+
+            setChildren(document.getElementById('details-body'),
+                isRoot ? null : badges,
+                isRoot ? null : el('p', { class: 'full-coord', text: info.full }),
+                callout,
+                metrics,
+                isRoot ? null : el('div', { class: 'details-section' }, [
+                    sectionTitle('Path from root', 'var(--edge-path)'),
+                    pathEl,
+                ]),
+                occurrences.length > 1 ? el('div', { class: 'details-section' }, [
+                    sectionTitle(`Appears ${occurrences.length} times · parent › version`),
+                    occurrenceList,
+                ]) : null,
+            );
+
+            document.getElementById('details-expand').disabled = !kids.length;
+            document.getElementById('details-copy').disabled = isRoot;
+        }
+
+        // ------------------------------------------------------------------
+        // Viewport helpers
+        // ------------------------------------------------------------------
+        function canvasSize() {
+            const node = svg.node();
+            return [node.clientWidth, node.clientHeight];
+        }
+
+        function placeRoot() {
+            const [, h] = canvasSize();
+            svg.call(zoom.transform, d3.zoomIdentity.translate(40, h / 2));
+        }
+
+        function fitToView(duration = 500) {
+            const nodes = root.descendants();
+            const [w, h] = canvasSize();
+            const [x0, x1] = d3.extent(nodes, d => d.x);
+            const [y0, y1] = d3.extent(nodes, d => d.y);
+            const bw = y1 - y0 + NODE_W, bh = x1 - x0 + NODE_H;
+            const padX = 40, padTop = 50, padBottom = 30;
+            const k = Math.max(0.05, Math.min(1.5, (w - padX * 2) / bw, (h - padTop - padBottom) / bh));
+            const t = d3.zoomIdentity
+                .translate(padX + Math.max(0, (w - padX * 2 - bw * k) / 2), padTop + Math.max(0, (h - padTop - padBottom - bh * k) / 2))
+                .scale(k)
+                .translate(-y0, -(x0 - NODE_H / 2));
+            (duration ? svg.transition().duration(duration) : svg).call(zoom.transform, t);
+        }
+
+        function centerOn(d, duration = 450) {
+            const [w, h] = canvasSize();
+            const k = Math.max(currentTransform.k, 0.8);
+            const t = d3.zoomIdentity.translate(w / 2 - (NODE_W / 2) * k, h / 2).scale(k).translate(-d.y, -d.x);
+            svg.transition().duration(duration).call(zoom.transform, t);
+        }
+
+        function ensureVisible(d) {
+            const [w, h] = canvasSize();
+            const sx = currentTransform.applyX(d.y), sy = currentTransform.applyY(d.x);
+            const margin = 60;
+            if (sx < margin || sx + NODE_W * currentTransform.k > w - margin || sy < margin || sy > h - margin) {
+                centerOn(d, 250);
+            }
+        }
+
+        function reducedMotion() {
+            return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        }
+
+        let toastTimer;
+        function toast(message) {
+            const t = document.getElementById('toast');
+            t.textContent = message;
+            t.hidden = false;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+        }
+
+        // ------------------------------------------------------------------
+        // Search
+        // ------------------------------------------------------------------
+        const searchBox = document.getElementById('search-box');
+        let searchTimer;
+
+        function runSearch() {
+            if (!root) return;
+            const term = searchBox.value.trim().toLowerCase();
+            const matches = [];
+            if (term) {
+                eachAll(d => {
+                    if (d === root) return;
+                    const info = d.data._info;
+                    if (info.module.toLowerCase().includes(term) || info.full.toLowerCase().includes(term)) matches.push(d);
+                });
+            }
+            // eachAll walks in pre-order, which is also the top-to-bottom order of the tree.
+            state.matches = matches;
+            state.matchIndex = -1;
+            let changed = false;
+            matches.forEach(d => { changed = reveal(d) || changed; });
+            if (changed) update(root, { anchor: true });
+            else applyHighlight();
+            updateSearchMeta();
+        }
+
+        function updateSearchMeta() {
+            const count = document.getElementById('search-count');
+            const term = searchBox.value.trim();
+            const n = state.matches.length;
+            if (!term) count.textContent = 'Matches are expanded and highlighted';
+            else if (!n) count.textContent = 'No matches';
+            else if (state.matchIndex >= 0) count.textContent = `${state.matchIndex + 1} of ${n} matches`;
+            else count.textContent = `${n} ${n === 1 ? 'match' : 'matches'} · Enter to jump`;
+            document.getElementById('search-prev').disabled = n === 0;
+            document.getElementById('search-next').disabled = n === 0;
+        }
+
+        function stepMatch(delta) {
+            const n = state.matches.length;
+            if (!n) return;
+            state.matchIndex = (state.matchIndex + delta + n) % n;
+            jumpTo(state.matches[state.matchIndex]);
+            updateSearchMeta();
+        }
+
+        // ------------------------------------------------------------------
+        // Keyboard navigation
+        // ------------------------------------------------------------------
+        function visibleOrder() {
+            return root.descendants().sort((a, b) => a.x - b.x || a.depth - b.depth);
+        }
+
+        function navigate(key) {
+            const current = state.selected || root;
+            if (!state.selected) {
+                select(root);
+                ensureVisible(root);
+                return;
+            }
+            let next = null;
+            if (key === 'ArrowDown' || key === 'ArrowUp') {
+                const order = visibleOrder();
+                const i = order.indexOf(current);
+                next = order[Math.min(order.length - 1, Math.max(0, i + (key === 'ArrowDown' ? 1 : -1)))];
+            } else if (key === 'ArrowRight') {
+                if (current._children) toggle(current);
+                else if (current.children) next = current.children[0];
+            } else if (key === 'ArrowLeft') {
+                if (current.children && current !== root) toggle(current);
+                else if (current.parent) next = current.parent;
+            } else if (key === 'Enter' || key === ' ') {
+                if (kidsOf(current)) toggle(current);
+            }
+            if (next) {
+                select(next);
+                ensureVisible(next);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Legend & controls
+        // ------------------------------------------------------------------
+        function renderLegend() {
+            const counts = new Map();
+            let changed = 0, repeated = 0, constraints = 0;
+            (function walk(node) {
+                (node.children || []).forEach(child => {
+                    const info = child._info;
+                    counts.set(info.category, (counts.get(info.category) || 0) + 1);
+                    if (info.resolved) changed++;
+                    if (info.repeated) repeated++;
+                    if (info.constraint) constraints++;
+                    walk(child);
+                });
+            })(state.treeData);
+
+            const item = (swatch, label, count) => el('div', { class: 'legend-item' }, [
+                swatch,
+                el('span', { class: 'legend-label', text: label }),
+                count !== undefined ? el('span', { class: 'legend-count', text: count.toLocaleString() }) : null,
+            ]);
+
+            document.getElementById('legend').replaceChildren(
+                ...CATEGORIES.filter(c => counts.get(c.key)).map(c =>
+                    item(el('span', { class: 'legend-swatch', style: { background: c.color } }), c.label, counts.get(c.key))),
+                item(el('span', { class: 'legend-pill changed', text: '→' }), 'Version changed by Gradle', changed),
+                item(el('span', { class: 'legend-pill', text: '↺' }), 'Repeated (*)', repeated),
+                item(el('span', { class: 'legend-pill', text: 'c' }), 'Dependency constraint', constraints),
+                item(el('span', { class: 'legend-pill', text: '+3' }), 'Collapsed · click to expand'),
+            );
+        }
+
+        function bindControls() {
+            document.querySelectorAll('[data-expand]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.expand;
+                    expandToLevel(value === 'all' ? Infinity : Number(value));
+                    if (value === 'all') toast(`Showing all ${root.descendants().length - 1} entries`);
+                });
+            });
+
+            document.getElementById('hide-constraints').addEventListener('change', event => {
+                settings.hideConstraints = event.target.checked;
+                buildHierarchy();
+                update(root, { anchor: true, animate: false });
+                runSearch();
+                renderDetails();
+            });
+            document.getElementById('show-versions').addEventListener('change', event => {
+                settings.showVersions = event.target.checked;
+                computeLabels();
+                update(root, { anchor: false, animate: false });
+            });
+
+            searchBox.addEventListener('input', () => {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(runSearch, 150);
+            });
+            searchBox.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    clearTimeout(searchTimer);
+                    if (state.matches.length === 0 || searchTimer) runSearch();
+                    stepMatch(event.shiftKey ? -1 : 1);
+                } else if (event.key === 'Escape') {
+                    searchBox.value = '';
+                    runSearch();
+                    searchBox.blur();
+                }
+            });
+            document.getElementById('search-prev').addEventListener('click', () => stepMatch(-1));
+            document.getElementById('search-next').addEventListener('click', () => stepMatch(1));
+
+            document.getElementById('zoom-in').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1.3));
+            document.getElementById('zoom-out').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.3));
+            document.getElementById('zoom-fit').addEventListener('click', () => fitToView());
+            document.getElementById('zoom-root').addEventListener('click', () => {
+                const [, h] = canvasSize();
+                svg.transition().duration(450).call(zoom.transform, d3.zoomIdentity.translate(40, h / 2).scale(1));
+            });
+            document.getElementById('sidebar-toggle').addEventListener('click', () => {
+                document.getElementById('app').classList.toggle('sidebar-open');
+            });
+
+            document.getElementById('details-close').addEventListener('click', () => select(null));
+            document.getElementById('details-center').addEventListener('click', () => state.selected && centerOn(state.selected));
+            document.getElementById('details-expand').addEventListener('click', () => state.selected && expandSubtree(state.selected));
+            document.getElementById('details-copy').addEventListener('click', async () => {
+                const d = state.selected;
+                if (!d) return;
+                const info = d.data._info;
+                const version = info.resolved || info.requested;
+                const text = version ? `${info.module}:${version}` : info.module;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    toast(`Copied ${text}`);
+                } catch (error) {
+                    toast('Clipboard is not available');
+                }
+            });
+
+            document.addEventListener('keydown', event => {
+                if (!root) return;
+                const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+                if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
+                if (event.key === '/') {
+                    event.preventDefault();
+                    searchBox.focus();
+                    searchBox.select();
+                } else if (event.key === 'Escape') {
+                    select(null);
+                } else if (event.key === 'f' || event.key === 'F') {
+                    fitToView();
+                } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(event.key)
+                    && !(document.activeElement && document.activeElement.tagName === 'BUTTON')) {
+                    event.preventDefault();
+                    navigate(event.key);
                 }
             });
         }
 
-        function formatTooltip(data) {
-            if (!data || data.module === 'Root Dependencies') return '';
-            const dataToShow = { ...data };
-            delete dataToShow.children;
-            return Object.entries(dataToShow)
-                .map(([key, value]) => `${key}: ${value || 'N/A'}`)
-                .join('\n');
-        }
+        // ------------------------------------------------------------------
+        // Entry point
+        // ------------------------------------------------------------------
+        const noDataBanner = document.getElementById('no-data');
+        let initialJsonData = defaultJsonData;
 
-        function getNodeLabel(d) {
-            if (d.data.module === 'Root Dependencies' || d.data.module.startsWith('project')) return d.data.module;
-
-            const moduleParts = d.data.module.split(':');
-
-            return d.data.version ? `${moduleParts[1]}:${d.data.version}` : moduleParts;
-        }
-
-        function update(source) {
-            const nodeWidth = 180;
-            const dy = 220;
-            const duration = 250;
-            const tree = d3.tree().nodeSize([25, dy]);
-
-            tree(root);
-
-            const nodes = root.descendants().reverse();
-            const links = root.links();
-
-            const node = gNode.selectAll("g.node")
-                .data(nodes, d => d.id || (d.id = ++nodeIdCounter));
-
-            const nodeEnter = node.enter().append("g")
-                .attr("class", "node")
-                .attr("transform", d => `translate(${source.y0},${source.x0})`)
-                .attr("fill-opacity", 0)
-                .attr("stroke-opacity", 0)
-                .on("click", toggleChildren);
-
-            nodeEnter.append("title")
-                .text(d => formatTooltip(d.data));
-
-            nodeEnter.append("rect")
-                .attr("rx", 6)
-                .attr("ry", 6)
-                .attr("height", 20)
-                .attr("y", -10)
-                .attr("width", nodeWidth);
-
-            const textEnter = nodeEnter.append("text")
-                .attr("class", "node-text")
-                .attr("dy", "0.31em")
-                .attr("x", 12)
-                .text(getNodeLabel)
-                .call(wrapText);
-
-            textEnter.clone(true).lower()
-                .attr("stroke-linejoin", "round")
-                .attr("stroke-width", 3)
-                .attr("stroke", "white");
-
-            const nodeUpdate = node.merge(nodeEnter);
-
-            nodeUpdate.select("title").text(d => formatTooltip(d.data));
-
-            nodeUpdate.transition()
-                .duration(duration)
-                .attr("transform", d => `translate(${d.y},${d.x})`)
-                .attr("fill-opacity", 1)
-                .attr("stroke-opacity", 1);
-
-            nodeUpdate
-                .attr("class", d => `node ${d.height === 0 ? 'node--leaf' : 'node--internal'}`);
-
-            const nodeExit = node.exit().transition()
-                .duration(duration)
-                .remove()
-                .attr("transform", d => `translate(${source.y},${source.x})`)
-                .attr("fill-opacity", 0)
-                .attr("stroke-opacity", 0);
-
-            const link = gLink.selectAll("path")
-                .data(links, d => d.target.id);
-
-            const linkGenerator = d3.linkHorizontal()
-                .x(p => p.y)
-                .y(p => p.x);
-
-            const linkEnter = link.enter().append("path")
-                .attr("class", "link")
-                .attr("d", d => {
-                    const startPoint = { x: source.x0, y: source.y0 + nodeWidth };
-                    return linkGenerator({ source: startPoint, target: startPoint });
-                });
-
-            link.merge(linkEnter).transition()
-                .duration(duration)
-                .attr("d", d => {
-                    const sourcePoint = { x: d.source.x, y: d.source.y + nodeWidth };
-                    const targetPoint = { x: d.target.x, y: d.target.y };
-                    return linkGenerator({ source: sourcePoint, target: targetPoint });
-                });
-
-            link.exit().transition()
-                .duration(duration)
-                .remove()
-                .attr("d", d => {
-                    const endPoint = { x: source.x, y: source.y + nodeWidth };
-                    return linkGenerator({ source: endPoint, target: endPoint });
-                });
-
-            root.eachBefore(d => {
-                d.x0 = d.x;
-                d.y0 = d.y;
-            });
-        }
-
-        // --- UI Event Listeners ---
-        document.getElementById('search-box').addEventListener('keyup', handleSearch);
-
-        const toggleBtn = document.getElementById('toggle-all-btn');
-        const expandIcon = document.getElementById('expand-icon');
-        const collapseIcon = document.getElementById('collapse-icon');
-
-        toggleBtn.addEventListener('click', () => {
-            if (!root) return;
-            if (isTreeExpanded) {
-                root.children.forEach(collapse);
-                expandIcon.classList.remove('hidden');
-                collapseIcon.classList.add('hidden');
-            } else {
-                expand(root);
-                expandIcon.classList.add('hidden');
-                collapseIcon.classList.remove('hidden');
+        // Ad-hoc uploads are never stored on the server: the landing page keeps the parsed JSON in
+        // this tab's sessionStorage and the server filters it on the fly.
+        async function fetchUploadedView(endpoint) {
+            let stored = null;
+            try {
+                stored = JSON.parse(sessionStorage.getItem('gdv:upload') || 'null');
+            } catch (error) {
+                console.warn('sessionStorage is not available:', error);
             }
-            isTreeExpanded = !isTreeExpanded;
-            update(root);
-        });
+            if (!stored || !stored.data) return null;
 
-        function handleSearch(event) {
-            if (!root) return;
-            const searchTerm = event.target.value.toLowerCase().trim();
+            const params = new URLSearchParams(window.location.search);
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    data: stored.data,
+                    filter: params.get('filter'),
+                    project_only: params.get('project_only') === 'true',
+                }),
+            });
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+            return { name: stored.name, data: await response.json() };
+        }
 
-            // Reset styles if search is cleared
-            if (!searchTerm) {
-                gNode.selectAll("g.node")
-                    .classed("node--searched", false)
-                    .classed("node--faded", false);
+        async function loadInitialData() {
+            // Check for injected data from server (Jinja2)
+            const serverTreeData = {{ tree_data | tojson | safe }};
+
+            // Wait (briefly) for the web fonts so that label measurements are accurate.
+            if (document.fonts && document.fonts.ready) {
+                await Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 1500))]);
+            }
+
+            if (serverTreeData) {
+                initialJsonData = serverTreeData;
+                renderTree(initialJsonData);
                 return;
             }
 
-            const matchedNodes = [];
-            root.each(d => {
-                const label = getNodeLabel(d).toLowerCase();
-                if (label.includes(searchTerm)) {
-                    matchedNodes.push(d);
+            // The user's upload, kept in this browser tab only
+            const showBanner = message => {
+                noDataBanner.hidden = false;
+                if (message) document.getElementById('no-data-message').textContent = message;
+            };
+            if (new URLSearchParams(window.location.search).get('source') === 'upload') {
+                try {
+                    const uploaded = await fetchUploadedView('/api/tree');
+                    if (uploaded) {
+                        document.getElementById('file-name').textContent = uploaded.name;
+                        initialJsonData = uploaded.data;
+                    } else {
+                        showBanner('Your upload is no longer available in this tab. Please upload the TXT again.');
+                    }
+                } catch (error) {
+                    console.error('Failed to process the uploaded data:', error);
+                    showBanner('Failed to process your upload. Please upload the TXT again.');
                 }
-            });
-
-            if (matchedNodes.length > 0) {
-                // First, expand all ancestors of matched nodes
-                matchedNodes.forEach(d => {
-                    let current = d;
-                    while (current.parent) {
-                        if (current.parent._children) {
-                            current.parent.children = current.parent._children;
-                            current.parent._children = null;
-                        }
-                        current = current.parent;
-                    }
-                });
-
-                // After expanding, update the tree to reflect the changes
-                update(root);
-
-                // Then, apply styling to all nodes
-                gNode.selectAll('g.node').each(function (d) { d.linkNode = this; });
-                gNode.selectAll("g.node")
-                    .classed("node--faded", true)
-                    .classed("node--searched", false);
-
-                matchedNodes.forEach(d => {
-                    let current = d;
-                    while (current) {
-                        d3.select(current.linkNode).classed("node--faded", false);
-                        if (matchedNodes.includes(current)) {
-                            d3.select(current.linkNode).classed("node--searched", true);
-                        }
-                        current = current.parent;
-                    }
-                });
-
             } else {
-                gNode.selectAll("g.node")
-                    .classed("node--faded", true)
-                    .classed("node--searched", false);
+                showBanner();
             }
+
+            renderTree(initialJsonData);
         }
 
-        // Initial render
+        bindControls();
         loadInitialData();
-
     </script>
 </body>
 

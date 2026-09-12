@@ -38,7 +38,8 @@ Run the following command in your Gradle project root to generate a text file of
 3. The app will automatically parse the file and redirect you to the visualization.
 
 ### 3. Navigation and Features
-- **File History**: The landing page shows a history of uploaded files. You can revisit any previous visualization or delete old files.
+- **Pre-Compiled Open Source Projects**: The landing page lists ready-to-explore dependency trees of open source Android projects (from `app/static/sample/`), so you can try the viewers without uploading anything.
+- **Stateless**: The app never stores your data. An uploaded TXT is parsed on the fly and the result is kept only in your browser tab (`sessionStorage`); closing the tab discards it.
 - **Tree Viewer**: Provides a hierarchical view of dependencies, perfect for understanding the structure of your project.
   ![Tree Viewer](screenshot/tree_viewer.png)
 - **Graph Viewer**: Offers a flexible, interactive neural graph visualization. Great for identifying complex relationship webs and transitive dependencies.

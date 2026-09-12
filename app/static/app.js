@@ -1,4 +1,10 @@
-const uploadForm = document.getElementById('upload-form');
+// The app is stateless: nothing is stored on the server. Pre-compiled projects are served as
+// static files, and an ad-hoc upload is parsed on the fly and kept only in this tab's
+// sessionStorage so that the viewers (and the back button) can reach it.
+const UPLOAD_KEY = 'gdv:upload';
+const CURRENT_KEY = 'gdv:current';
+const PREVIEW_LIMIT = 200000;
+
 const fileInput = document.getElementById('txt-file');
 const dropZone = document.getElementById('drop-zone');
 const errorEl = document.getElementById('upload-error');
@@ -7,19 +13,20 @@ const processingState = document.getElementById('processing-state');
 const readyState = document.getElementById('ready-state');
 const txtPreview = document.getElementById('txt-preview');
 const jsonPreview = document.getElementById('json-preview');
-const fileList = document.getElementById('file-list');
 const openGraphBtn = document.getElementById('open-graph-btn');
 const openTreeBtn = document.getElementById('open-tree-btn');
 const enlistBtn = document.getElementById('enlist-btn');
 const currentFileName = document.getElementById('current-file-name');
+const sourceBadge = document.getElementById('source-badge');
 const txtPanel = document.getElementById('txt-panel');
 const resultsGrid = document.querySelector('.results-grid');
-const deleteConfirmDialog = document.getElementById('delete-confirm-dialog');
-const deleteFilenameEl = document.getElementById('delete-filename');
-const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+const sampleList = document.getElementById('sample-list');
+const filterInput = document.getElementById('filter-text');
+const projectOnlyCheckbox = document.getElementById('project-only');
 
-let selectedFile = null;
-let fileToDelete = null;
+let samples = [];
+// { kind: 'sample', filename, name, data } or { kind: 'upload', name, data, txt }
+let current = null;
 
 function setState(state) {
   welcomeState.classList.toggle('hidden', state !== 'welcome');
@@ -43,151 +50,114 @@ function isTxtFile(file) {
   return file && file.name.toLowerCase().endsWith('.txt');
 }
 
-async function fetchFiles() {
+function readSession(key) {
   try {
-    const response = await fetch('/api/files');
-    const files = await response.json();
-    
-    // Restore selected file from local storage if available
-    const storedFile = localStorage.getItem('selectedFile');
-    if (storedFile && files.some(f => f.name === storedFile)) {
-        selectedFile = storedFile;
-        // Don't auto-select/fetch content yet, just highlight in list
-        // Or if we want to restore the view state, we'd call selectFile(storedFile)
-        // But let's just highlight it for now to match typical "back" behavior logic or fully restore
-        // The prompt implies "state ... is gone", so let's fully restore if present.
-        selectFile(storedFile); 
-    } else {
-        renderFileList(files);
-    }
+    return JSON.parse(sessionStorage.getItem(key) || 'null');
   } catch (error) {
-    console.error('Failed to fetch files:', error);
+    return null;
   }
 }
 
-function renderFileList(files) {
-  if (!fileList) return;
+function writeSession(key, value) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.warn(`Could not keep ${key} in sessionStorage:`, error);
+    return false;
+  }
+}
 
-  if (files.length === 0) {
-    fileList.innerHTML = '<li class="empty-list">No past files found.</li>';
+function withoutRawTxt(data) {
+  const { raw_txt, ...rest } = data || {};
+  return rest;
+}
+
+function preview(text) {
+  return text.length > PREVIEW_LIMIT ? `${text.slice(0, PREVIEW_LIMIT)}\n… (preview truncated)` : text;
+}
+
+// --- Pre-compiled open source projects ---
+
+async function fetchSamples() {
+  try {
+    const response = await fetch('/api/samples');
+    if (!response.ok) throw new Error(`Server returned ${response.status}`);
+    samples = await response.json();
+  } catch (error) {
+    console.error('Failed to fetch samples:', error);
+    samples = [];
+  }
+  renderSampleList();
+}
+
+function renderSampleList() {
+  sampleList.replaceChildren();
+
+  if (samples.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'empty-list';
+    empty.textContent = 'No pre-compiled projects available.';
+    sampleList.append(empty);
     return;
   }
 
-  fileList.innerHTML = files.map(file => `
-    <li class="file-item ${selectedFile === file.name ? 'active' : ''}">
-      <button class="file-select-btn" onclick="selectFile('${file.name}')" aria-label="Select ${file.name}">
-        <span class="file-name" title="${file.name}">${file.name}</span>
-      </button>
-      <div class="file-actions">
-<<<<<<< HEAD
-        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" aria-label="Delete ${file.name}">×</button>
-=======
-        <button class="delete-btn" onclick="deleteFile(event, '${file.name}')" title="Delete file" aria-label="Delete ${file.name}"><span aria-hidden="true">×</span></button>
->>>>>>> origin/main
-      </div>
-    </li>
-  `).join('');
+  samples.forEach(sample => {
+    const item = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'project-item';
+    button.dataset.filename = sample.filename;
+    button.setAttribute('aria-label', `Open ${sample.name} dependencies`);
+    button.innerHTML = `
+      <span class="project-icon" aria-hidden="true"></span>
+      <span class="project-meta">
+        <span class="project-name"></span>
+        <span class="project-stats"></span>
+      </span>
+      <svg class="project-chevron" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor"
+        stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    `;
+    button.querySelector('.project-icon').textContent = sample.name.charAt(0);
+    button.querySelector('.project-name').textContent = sample.name;
+    button.querySelector('.project-stats').textContent =
+      `${Number(sample.entries).toLocaleString()} entries · ${Number(sample.modules).toLocaleString()} modules`;
+    button.addEventListener('click', () => openSample(sample));
+    item.append(button);
+    sampleList.append(item);
+  });
+  updateActiveSample();
 }
 
-async function selectFile(filename) {
-  selectedFile = filename;
-  localStorage.setItem('selectedFile', filename);
-  
-  try {
-    const filesResponse = await fetch('/api/files');
-    const files = await filesResponse.json();
-    renderFileList(files);
+function updateActiveSample() {
+  sampleList.querySelectorAll('.project-item').forEach(button => {
+    const active = current?.kind === 'sample' && current.filename === button.dataset.filename;
+    button.setAttribute('aria-pressed', String(active));
+  });
+}
 
-    // Fetch file content to preview
-    const response = await fetch(`/static/data/${filename}`);
-    if (!response.ok) throw new Error('File fetch failed');
+async function openSample(sample) {
+  clearError();
+  setState('processing');
+  setDisabled(true);
+
+  try {
+    const response = await fetch(sample.path);
+    if (!response.ok) throw new Error(`Failed to load ${sample.name}.`);
     const data = await response.json();
-
-    currentFileName.textContent = filename;
-    jsonPreview.textContent = JSON.stringify(data, null, 2);
-    txtPreview.textContent = data.raw_txt || "Original TXT content not available for this file.";
-
-    // Hide TXT and arrow panels for a cleaner view
-    txtPanel.classList.add('hidden');
-    resultsGrid.classList.add('single-column');
-
-    // Filter elements
-    const filterInput = document.getElementById('filter-text');
-    const projectOnlyCheckbox = document.getElementById('project-only');
-
-    const handleVizClick = (targetUrlConstructor) => {
-      const filterValue = filterInput.value.trim();
-      const projectOnly = projectOnlyCheckbox.checked;
-
-      let url = targetUrlConstructor(filename);
-      const params = new URLSearchParams();
-
-      if (filterValue) {
-        params.append('filter', filterValue);
-      }
-      if (projectOnly) {
-        params.append('project_only', 'true');
-      }
-
-      const queryString = params.toString();
-      if (queryString) {
-        url += (url.includes('?') ? '&' : '?') + queryString;
-      }
-
-      window.location.href = url;
-    };
-
-    openGraphBtn.onclick = () => handleVizClick((f) => `/viz/graph_viewer.html?file=${f}`);
-    openTreeBtn.onclick = () => handleVizClick((f) => `/viz/tree_viewer.html?file=${f}`);
-
-    enlistBtn.onclick = () => {
-      window.location.href = `/api/enlist/${filename}`;
-    };
-
-    setState('ready');
+    showResult({ kind: 'sample', filename: sample.filename, name: sample.name, data });
+    writeSession(CURRENT_KEY, { kind: 'sample', filename: sample.filename });
   } catch (error) {
-    console.error('Failed to load file content:', error);
-    // If we fail here, we should probably go back to welcome or show error
-    // If called from handleUpload, the error will be caught there.
-    throw error;
-  }
-}
-
-function showDeleteDialog(event, filename) {
-  event.stopPropagation();
-  fileToDelete = filename;
-  deleteFilenameEl.textContent = filename;
-  deleteConfirmDialog.showModal();
-}
-
-// Handle dialog confirm button
-confirmDeleteBtn.addEventListener('click', async () => {
-  if (!fileToDelete) return;
-
-  const filename = fileToDelete;
-  try {
-    const response = await fetch(`/api/files/${filename}`, { method: 'DELETE' });
-    if (response.ok) {
-      if (selectedFile === filename) {
-        selectedFile = null;
-        localStorage.removeItem('selectedFile');
-        setState('welcome');
-      }
-      fetchFiles();
-    }
-  } catch (error) {
-    console.error('Failed to delete file:', error);
-    showError(`Failed to delete ${filename}`);
+    setState('welcome');
+    showError(error.message);
   } finally {
-    fileToDelete = null;
-    // Dialog closes automatically due to form method="dialog"
+    setDisabled(false);
   }
-});
+}
 
-// Handle dialog cancel/close
-deleteConfirmDialog.addEventListener('close', () => {
-  fileToDelete = null;
-});
+// --- Ad-hoc upload ---
 
 async function handleUpload(file) {
   clearError();
@@ -216,15 +186,114 @@ async function handleUpload(file) {
     }
 
     const result = await response.json();
-    await fetchFiles();
-    await selectFile(result.filename);
+    const upload = { name: result.name, data: result.json, txt: result.txt };
+
+    // Keep the upload in this tab only; drop the TXT first if the browser's quota is too small.
+    const kept = writeSession(UPLOAD_KEY, upload) || writeSession(UPLOAD_KEY, { name: upload.name, data: upload.data });
+    writeSession(CURRENT_KEY, { kind: 'upload' });
+    showResult({ kind: 'upload', ...upload });
+    if (!kept) {
+      showError('This file is too large to keep in the browser tab, so the viewers may not be able to open it.');
+    }
   } catch (error) {
     setState('welcome');
     showError(error.message);
   } finally {
     setDisabled(false);
+    fileInput.value = '';
   }
 }
+
+// --- Result view ---
+
+function showResult(entry) {
+  current = entry;
+  currentFileName.textContent = entry.name;
+  sourceBadge.textContent = entry.kind === 'sample'
+    ? 'Pre-compiled open source project'
+    : 'Your upload · kept in this browser tab only';
+  sourceBadge.classList.toggle('upload', entry.kind === 'upload');
+
+  jsonPreview.textContent = preview(JSON.stringify(withoutRawTxt(entry.data), null, 2));
+  const txt = entry.txt || '';
+  txtPreview.textContent = preview(txt);
+  txtPanel.classList.toggle('hidden', !txt);
+  resultsGrid.classList.toggle('single-column', !txt);
+
+  updateActiveSample();
+  setState('ready');
+}
+
+function viewerUrl(viewer) {
+  const params = new URLSearchParams();
+  if (current.kind === 'sample') {
+    params.set('sample', current.filename);
+  } else {
+    params.set('source', 'upload');
+  }
+
+  const filterValue = filterInput.value.trim();
+  if (filterValue) {
+    params.set('filter', filterValue);
+  }
+  if (projectOnlyCheckbox.checked) {
+    params.set('project_only', 'true');
+  }
+  return `/viz/${viewer}.html?${params}`;
+}
+
+openGraphBtn.addEventListener('click', () => {
+  if (current) window.location.href = viewerUrl('graph_viewer');
+});
+
+openTreeBtn.addEventListener('click', () => {
+  if (current) window.location.href = viewerUrl('tree_viewer');
+});
+
+enlistBtn.addEventListener('click', async () => {
+  if (!current) return;
+  clearError();
+  try {
+    const response = await fetch('/api/enlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: withoutRawTxt(current.data) })
+    });
+    if (!response.ok) throw new Error('Failed to enlist dependencies.');
+
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${current.name}_dependencies.yaml`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    showError(error.message);
+  }
+});
+
+// Restore what this tab was showing (e.g. after coming back from a viewer).
+async function restoreCurrent() {
+  const saved = readSession(CURRENT_KEY);
+  if (saved?.kind === 'upload') {
+    const upload = readSession(UPLOAD_KEY);
+    if (upload?.data) {
+      showResult({ kind: 'upload', ...upload });
+      return;
+    }
+  } else if (saved?.kind === 'sample') {
+    const sample = samples.find(s => s.filename === saved.filename);
+    if (sample) {
+      await openSample(sample);
+      return;
+    }
+  }
+  setState('welcome');
+}
+
+// --- Drop zone ---
 
 fileInput.addEventListener('change', () => {
   if (fileInput.files.length) {
@@ -259,7 +328,6 @@ dropZone.addEventListener('drop', (e) => {
   dropZone.classList.remove('drop-zone--over');
 
   if (e.dataTransfer.files.length) {
-    fileInput.files = e.dataTransfer.files;
     handleUpload(e.dataTransfer.files[0]);
   }
 });
@@ -287,60 +355,5 @@ if (copyHintBtn && hintCode) {
 }
 
 // Initial load
-fetchFiles();
-fetchSamples();
 setState('welcome');
-
-// Sample logic
-const sampleSection = document.getElementById('sample-section');
-const sampleList = document.getElementById('sample-list');
-
-async function fetchSamples() {
-  try {
-    const response = await fetch('/api/samples');
-    const samples = await response.json();
-    renderSampleList(samples);
-  } catch (error) {
-    console.error('Failed to fetch samples:', error);
-  }
-}
-
-function renderSampleList(samples) {
-  if (samples.length === 0) {
-    sampleSection.classList.add('hidden');
-    return;
-  }
-
-  sampleSection.classList.remove('hidden');
-  sampleList.innerHTML = samples.map(sample => `
-    <button class="sample-chip" onclick="handleSampleClick('${sample.filename}')">
-      ${sample.name}
-    </button>
-  `).join('');
-}
-
-async function handleSampleClick(filename) {
-  clearError();
-  setState('processing');
-  setDisabled(true);
-
-  try {
-    const response = await fetch(`/api/samples/${filename}/process`, {
-      method: 'POST'
-    });
-
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.detail || 'Failed to process sample.');
-    }
-
-    const result = await response.json();
-    await fetchFiles();
-    await selectFile(result.filename);
-  } catch (error) {
-    setState('welcome');
-    showError(error.message);
-  } finally {
-    setDisabled(false);
-  }
-}
+fetchSamples().then(restoreCurrent);
