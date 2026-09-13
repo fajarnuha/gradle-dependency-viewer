@@ -1,0 +1,26 @@
+// Init script used by jenkins/generate-sample.Jenkinsfile. Finds the app module, either by Gradle path
+// (-Pgdv.module=:app) or by directory relative to the root project (-Pgdv.moduleDir=app, which also
+// works when settings.gradle gives the module another name), and prints:
+//   GDV_MODULE=<gradle path>
+//   GDV_CONFIGURATION=<name>   (one line per resolvable runtime classpath configuration)
+// It only configures the build, so nothing is resolved or downloaded for the listing.
+gradle.projectsEvaluated {
+    def props = gradle.startParameter.projectProperties
+    def module
+    if (props['gdv.module']) {
+        module = gradle.rootProject.findProject(props['gdv.module'])
+        if (module == null) {
+            throw new GradleException("Module '${props['gdv.module']}' was not found in the build.")
+        }
+    } else {
+        def dir = new File(gradle.rootProject.projectDir, props['gdv.moduleDir'] ?: '.').canonicalFile
+        module = gradle.rootProject.allprojects.find { it.projectDir.canonicalFile == dir }
+        if (module == null) {
+            throw new GradleException("No module of the build lives in '${props['gdv.moduleDir']}'.")
+        }
+    }
+    println "GDV_MODULE=${module.path}"
+    module.configurations
+        .findAll { it.canBeResolved && it.name.endsWith('RuntimeClasspath') }
+        .each { println "GDV_CONFIGURATION=${it.name}" }
+}

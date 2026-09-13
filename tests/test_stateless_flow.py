@@ -33,10 +33,15 @@ def _app_files():
     }
 
 
-def test_upload_renders_viewers_without_storing_anything(page: Page, tmp_path):
+def _write_txt(tmp_path):
     sample = sorted(SAMPLE_DIR.glob("*.json"))[0]
     txt_file = tmp_path / "my_app.txt"
     txt_file.write_text(json.loads(sample.read_text(encoding="utf-8"))["raw_txt"], encoding="utf-8")
+    return txt_file
+
+
+def test_upload_renders_viewers_without_storing_anything(page: Page, tmp_path):
+    txt_file = _write_txt(tmp_path)
     before = _app_files()
 
     page.goto(BASE_URL)
@@ -53,16 +58,45 @@ def test_upload_renders_viewers_without_storing_anything(page: Page, tmp_path):
     expect(page.locator("#file-name")).to_have_text("my_app")
     expect(page.locator("#no-data")).to_be_hidden()
 
-    # Coming back restores the upload, and filters are applied server-side on the fly
+    # Coming back restores the upload for the tree viewer too
     page.go_back()
     page.locator("#ready-state").wait_for()
-    page.fill("#filter-text", "okhttp")
     page.click("#open-tree-btn")
     page.locator("#graph-container svg g.node").first.wait_for()
     expect(page.locator("#file-name")).to_have_text("my_app")
     expect(page.locator("#no-data")).to_be_hidden()
 
     assert _app_files() == before
+
+
+def test_clear_result(page: Page, tmp_path):
+    page.goto(BASE_URL)
+    project_btn = page.locator("#sample-list .project-item").first
+    project_btn.wait_for()
+
+    # Clearing an upload asks for confirmation first
+    page.set_input_files("#txt-file", str(_write_txt(tmp_path)))
+    page.locator("#ready-state").wait_for()
+    page.click("#clear-btn")
+    expect(page.locator("#clear-dialog")).to_be_visible()
+    page.click("#clear-dialog button[value=cancel]")
+    expect(page.locator("#ready-state")).to_be_visible()
+    assert page.evaluate("sessionStorage.getItem('gdv:upload')") is not None
+
+    page.click("#clear-btn")
+    page.click("#clear-dialog button[value=confirm]")
+    expect(page.locator("#welcome-state")).to_be_visible()
+    expect(page.locator("#ready-state")).to_be_hidden()
+    assert page.evaluate("sessionStorage.getItem('gdv:upload')") is None
+    assert page.evaluate("sessionStorage.getItem('gdv:current')") is None
+
+    # Clearing a pre-compiled project needs no confirmation
+    project_btn.click()
+    page.locator("#ready-state").wait_for()
+    page.click("#clear-btn")
+    expect(page.locator("#clear-dialog")).to_be_hidden()
+    expect(page.locator("#welcome-state")).to_be_visible()
+    expect(project_btn).to_have_attribute("aria-pressed", "false")
 
 
 def test_viewer_without_upload_shows_hint(page: Page):

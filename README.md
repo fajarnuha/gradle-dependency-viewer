@@ -53,3 +53,21 @@ While the web app handles parsing automatically, you can still use the core scri
 ```bash
 uv run python app/parse.py path/to/my_app.txt
 ```
+
+### Generating a Pre-Compiled Sample (Jenkins)
+`jenkins/generate-sample.Jenkinsfile` turns a public GitHub Android repository into a new sample in `app/static/sample/` and opens a pull request with it. It downloads the repository archive, checks that it is an Android Gradle project with a wrapper, finds the app module and a release runtime classpath configuration, runs `./gradlew <module>:dependencies --configuration <configuration>`, converts the output to JSON, and deletes everything it downloaded when it finishes. A new dump of a project replaces that project's older sample.
+
+To set it up, create a Pipeline job ("Pipeline script from SCM") on this repository with the script path `jenkins/generate-sample.Jenkinsfile`, and add a "Username with password" credential with the ID `github-token` whose password is a GitHub token that can push branches and open pull requests. The agent needs `git`, `curl`, `unzip`, `python3` and Docker (with the Docker Pipeline plugin). Gradle runs inside `ANDROID_IMAGE`, because building a downloaded project runs its code.
+
+| Parameter | Default | Purpose |
+|---|---|---|
+| `REPO_URL` | | e.g. `https://github.com/android/architecture-samples` |
+| `GIT_REF` | `HEAD` | Branch, tag or commit |
+| `SAMPLE_NAME` | repository name | Name shown on the home page |
+| `MODULE` | detected | Gradle path of the app module, e.g. `:app` |
+| `CONFIGURATION` | shortest `*ReleaseRuntimeClasspath` | Configuration to dump |
+| `ANDROID_IMAGE` | `cimg/android:2026.08` | Image with a JDK and the Android SDK; blank runs Gradle on the agent |
+| `BASE_BRANCH` | `main` | Branch the pull request targets |
+| `DRY_RUN` | `false` | Only build and archive the JSON |
+
+The steps are in `jenkins/generate_sample.py` (standard library only), so you can run them locally too, e.g. `python3 jenkins/generate_sample.py validate path/to/project`.

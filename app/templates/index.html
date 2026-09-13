@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gradle Dependency Viewer</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/static/app.css" />
 </head>
 
@@ -20,131 +21,155 @@
       <p>Upload your dependency TXT file or explore a pre-compiled open source project.</p>
     </header>
 
-    <div class="main-content">
-      <aside class="sidebar">
-        <section class="card" id="upload-section">
-          <h2>Process New File</h2>
-          <form id="upload-form" class="upload-form">
-            <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="Upload dependency text file">
-              <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2" fill="none"
-                stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);" aria-hidden="true">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              <span class="drop-zone__prompt">Drop file here or click to upload (.txt)</span>
-              <input type="file" name="file" id="txt-file" class="drop-zone__input" accept=".txt">
-            </div>
-            <p class="error" id="upload-error" role="alert" aria-live="polite"></p>
-          </form>
-          <p class="privacy-note">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="4" y="11" width="16" height="10" rx="2"></rect>
-              <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+    <section class="card input-card" aria-label="Choose dependencies">
+      <div class="input-card__section" id="upload-section">
+        <form id="upload-form" class="upload-form">
+          <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="Upload dependency text file">
+            <svg viewBox="0 0 24 24" width="40" height="40" stroke="currentColor" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
-            Processed on the fly. Nothing is stored on the server.
-          </p>
-        </section>
-
-        <section class="card" id="projects-section">
-          <h2>Pre-Compiled Open Source Projects</h2>
-          <p class="card-subtitle">Explore real-world dependency graphs, no upload needed.</p>
-          <ul id="sample-list" class="project-list">
-            <!-- Populated by JavaScript -->
-            <li class="empty-list">Loading projects…</li>
-          </ul>
-        </section>
-      </aside>
-
-      <section class="content-area">
-        <section class="card hidden" id="processing-state" aria-live="polite">
-          <div class="processing">
-            <div class="spinner" aria-hidden="true"></div>
-            <div>
-              <h2>Processing…</h2>
-              <p>Please wait while we prepare the dependencies.</p>
-            </div>
+            <span class="drop-zone__title">Drop your dependency TXT here</span>
+            <span class="drop-zone__prompt">or click to choose a .txt file</span>
+            <input type="file" name="file" id="txt-file" class="drop-zone__input" accept=".txt">
           </div>
-        </section>
+          <p class="error" id="upload-error" role="alert" aria-live="polite"></p>
+        </form>
 
-        <section class="card" id="welcome-state">
-          <div class="welcome-box">
-            <h2>Get Started</h2>
-            <p>Upload a Gradle dependency output (TXT) to visualize it as a graph, or pick one of the
-              pre-compiled open source projects.</p>
-            <div class="hint-box">
-              <div class="hint-header">
-                <h3>How to generate the TXT</h3>
-                <button class="icon-btn" id="copy-hint-btn" title="Copy command" aria-label="Copy command">
-                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                </button>
-              </div>
-              <p>Run your Gradle dependency task (e.g., <code
-                  id="hint-code">./gradlew app:dependencies --configuration debugRuntimeClasspath > dependencies.txt</code>)
-                and export the output
-                to a TXT file.</p>
-            </div>
+        <div class="hint-box">
+          <div class="hint-header">
+            <h3>How to generate the TXT</h3>
+            <button class="icon-btn" id="copy-hint-btn" title="Copy command" aria-label="Copy command">
+              <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
           </div>
-        </section>
+          <code id="hint-code">./gradlew app:dependencies --configuration debugRuntimeClasspath > dependencies.txt</code>
+        </div>
 
-        <section class="card hidden" id="ready-state">
-          <div class="ready-header">
-            <span class="source-badge" id="source-badge"></span>
-            <h2 id="current-file-name">JSON result is ready</h2>
-            <p>Review the conversion details and open the visualizations.</p>
-          </div>
+        <p class="privacy-note">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="4" y="11" width="16" height="10" rx="2"></rect>
+            <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+          </svg>
+          Processed on the fly. Nothing is stored on the server.
+        </p>
+      </div>
 
-          <div class="results-grid">
-            <div class="panel" id="txt-panel">
-              <div class="panel-header">
-                <div class="panel-title">Uploaded TXT</div>
-              </div>
-              <pre id="txt-preview" class="code-block"></pre>
+      <div class="input-card__section input-card__projects" id="projects-section">
+        <h2>Pre-Compiled Open Source Projects</h2>
+        <ul id="sample-list" class="project-list">
+          <!-- Populated by JavaScript -->
+          <li class="empty-list">Loading projects…</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card result-card result-card--empty" id="welcome-state">
+      <p>Upload a TXT or pick a project above. The result shows up here.</p>
+    </section>
+
+    <section class="card result-card hidden" id="processing-state" aria-live="polite">
+      <div class="processing">
+        <div class="spinner" aria-hidden="true"></div>
+        <div>
+          <h2>Processing…</h2>
+          <p>Please wait while we prepare the dependencies.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card result-card hidden" id="ready-state">
+      <button class="icon-btn clear-btn" id="clear-btn" title="Clear result" aria-label="Clear result">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div class="ready-header">
+        <div class="ready-check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="3" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <p class="ready-status">Ready</p>
+        <h2 id="current-file-name">JSON result is ready</h2>
+        <span class="source-badge" id="source-badge"></span>
+      </div>
+
+      <div class="collapsibles">
+        <details class="collapsible" id="txt-panel">
+          <summary>Uploaded TXT</summary>
+          <pre id="txt-preview" class="code-block"></pre>
+        </details>
+
+        <details class="collapsible" id="json-panel">
+          <summary>Dependency JSON</summary>
+          <div class="collapsible__body">
+            <div class="collapsible__toolbar">
+              <span>Download a flat list of dependencies (YAML)</span>
+              <button class="icon-btn" id="enlist-btn" title="Download dependencies (YAML)" aria-label="Enlist Dependencies">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </button>
             </div>
-
-            <div class="panel">
-              <div class="panel-header">
-                <div class="panel-title">JSON Result</div>
-                <button class="icon-btn" id="enlist-btn" title="Enlist Dependencies" aria-label="Enlist Dependencies">
-                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                  </svg>
-                </button>
-              </div>
-              <pre id="json-preview" class="code-block"></pre>
-              <div class="viz-menu">
-                <h3>Visualization menu</h3>
-                <div class="viz-actions">
-                  <div class="filter-group">
-                    <label for="filter-text">Filter:</label>
-                    <input type="text" id="filter-text" placeholder="e.g. androidx, :module" title="Filter by keyword">
-                  </div>
-                  <div class="filter-group">
-                    <label for="project-only">
-                      <input type="checkbox" id="project-only">
-                      Project only
-                    </label>
-                  </div>
-                  <button class="secondary-btn" id="open-graph-btn">Open Graph Viewer</button>
-                  <button class="secondary-btn" id="open-tree-btn">Open Tree Viewer</button>
-                </div>
-              </div>
-            </div>
+            <pre id="json-preview" class="code-block"></pre>
           </div>
-        </section>
-      </section>
-    </div>
+        </details>
+      </div>
+
+      <div class="viz-actions">
+        <button class="viz-btn" id="open-graph-btn">
+          <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="6" cy="6" r="3"></circle>
+            <circle cx="18" cy="8" r="3"></circle>
+            <circle cx="10" cy="18" r="3"></circle>
+            <line x1="8.5" y1="7.5" x2="15.2" y2="7.6"></line>
+            <line x1="7" y1="8.8" x2="9" y2="15.2"></line>
+            <line x1="16.4" y1="10.5" x2="12.2" y2="16"></line>
+          </svg>
+          <span class="viz-btn__label">Graph</span>
+          <span class="viz-btn__hint">Interactive force graph</span>
+        </button>
+        <button class="viz-btn" id="open-tree-btn">
+          <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="6" height="5" rx="1"></rect>
+            <rect x="15" y="10" width="6" height="5" rx="1"></rect>
+            <rect x="15" y="17" width="6" height="5" rx="1"></rect>
+            <path d="M6 8v11.5h9"></path>
+            <path d="M6 12.5h9"></path>
+          </svg>
+          <span class="viz-btn__label">Tree</span>
+          <span class="viz-btn__hint">Collapsible hierarchy</span>
+        </button>
+      </div>
+    </section>
+
+    <dialog class="confirm-dialog" id="clear-dialog" aria-labelledby="clear-dialog-title">
+      <form method="dialog">
+        <h2 id="clear-dialog-title">Remove uploaded data?</h2>
+        <p>This removes your uploaded TXT and its dependency JSON from this browser tab. You'll need to upload
+          the file again to view it.</p>
+        <div class="dialog-actions">
+          <button class="dialog-btn" value="cancel" autofocus>Cancel</button>
+          <button class="dialog-btn dialog-btn--danger" value="confirm">Remove</button>
+        </div>
+      </form>
+    </dialog>
   </main>
 
   <script src="/static/app.js"></script>

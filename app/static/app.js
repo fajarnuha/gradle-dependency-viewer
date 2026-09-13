@@ -19,10 +19,9 @@ const enlistBtn = document.getElementById('enlist-btn');
 const currentFileName = document.getElementById('current-file-name');
 const sourceBadge = document.getElementById('source-badge');
 const txtPanel = document.getElementById('txt-panel');
-const resultsGrid = document.querySelector('.results-grid');
 const sampleList = document.getElementById('sample-list');
-const filterInput = document.getElementById('filter-text');
-const projectOnlyCheckbox = document.getElementById('project-only');
+const clearBtn = document.getElementById('clear-btn');
+const clearDialog = document.getElementById('clear-dialog');
 
 let samples = [];
 // { kind: 'sample', filename, name, data } or { kind: 'upload', name, data, txt }
@@ -65,6 +64,14 @@ function writeSession(key, value) {
   } catch (error) {
     console.warn(`Could not keep ${key} in sessionStorage:`, error);
     return false;
+  }
+}
+
+function removeSession(key) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch (error) {
+    console.warn(`Could not remove ${key} from sessionStorage:`, error);
   }
 }
 
@@ -113,7 +120,6 @@ function renderSampleList() {
       <span class="project-icon" aria-hidden="true"></span>
       <span class="project-meta">
         <span class="project-name"></span>
-        <span class="project-stats"></span>
       </span>
       <svg class="project-chevron" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor"
         stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -122,8 +128,6 @@ function renderSampleList() {
     `;
     button.querySelector('.project-icon').textContent = sample.name.charAt(0);
     button.querySelector('.project-name').textContent = sample.name;
-    button.querySelector('.project-stats').textContent =
-      `${Number(sample.entries).toLocaleString()} entries · ${Number(sample.modules).toLocaleString()} modules`;
     button.addEventListener('click', () => openSample(sample));
     item.append(button);
     sampleList.append(item);
@@ -138,7 +142,7 @@ function updateActiveSample() {
   });
 }
 
-async function openSample(sample) {
+async function openSample(sample, { reveal = true } = {}) {
   clearError();
   setState('processing');
   setDisabled(true);
@@ -149,6 +153,7 @@ async function openSample(sample) {
     const data = await response.json();
     showResult({ kind: 'sample', filename: sample.filename, name: sample.name, data });
     writeSession(CURRENT_KEY, { kind: 'sample', filename: sample.filename });
+    if (reveal) revealResult();
   } catch (error) {
     setState('welcome');
     showError(error.message);
@@ -192,6 +197,7 @@ async function handleUpload(file) {
     const kept = writeSession(UPLOAD_KEY, upload) || writeSession(UPLOAD_KEY, { name: upload.name, data: upload.data });
     writeSession(CURRENT_KEY, { kind: 'upload' });
     showResult({ kind: 'upload', ...upload });
+    revealResult();
     if (!kept) {
       showError('This file is too large to keep in the browser tab, so the viewers may not be able to open it.');
     }
@@ -218,10 +224,14 @@ function showResult(entry) {
   const txt = entry.txt || '';
   txtPreview.textContent = preview(txt);
   txtPanel.classList.toggle('hidden', !txt);
-  resultsGrid.classList.toggle('single-column', !txt);
 
   updateActiveSample();
   setState('ready');
+}
+
+// The result card sits below the inputs, so bring it into view after a user action.
+function revealResult() {
+  readyState.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function viewerUrl(viewer) {
@@ -231,16 +241,35 @@ function viewerUrl(viewer) {
   } else {
     params.set('source', 'upload');
   }
-
-  const filterValue = filterInput.value.trim();
-  if (filterValue) {
-    params.set('filter', filterValue);
-  }
-  if (projectOnlyCheckbox.checked) {
-    params.set('project_only', 'true');
-  }
   return `/viz/${viewer}.html?${params}`;
 }
+
+// Drop the active result; an upload is also removed from this tab's sessionStorage.
+function clearCurrent() {
+  if (current?.kind === 'upload') removeSession(UPLOAD_KEY);
+  removeSession(CURRENT_KEY);
+  current = null;
+  jsonPreview.textContent = '';
+  txtPreview.textContent = '';
+  readyState.querySelectorAll('details').forEach(details => { details.open = false; });
+  clearError();
+  updateActiveSample();
+  setState('welcome');
+  dropZone.focus();
+}
+
+clearBtn.addEventListener('click', () => {
+  if (current?.kind === 'upload') {
+    clearDialog.returnValue = '';
+    clearDialog.showModal();
+  } else {
+    clearCurrent();
+  }
+});
+
+clearDialog.addEventListener('close', () => {
+  if (clearDialog.returnValue === 'confirm') clearCurrent();
+});
 
 openGraphBtn.addEventListener('click', () => {
   if (current) window.location.href = viewerUrl('graph_viewer');
@@ -286,7 +315,7 @@ async function restoreCurrent() {
   } else if (saved?.kind === 'sample') {
     const sample = samples.find(s => s.filename === saved.filename);
     if (sample) {
-      await openSample(sample);
+      await openSample(sample, { reveal: false });
       return;
     }
   }
