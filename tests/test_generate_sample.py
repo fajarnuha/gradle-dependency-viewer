@@ -210,6 +210,57 @@ def test_convert_writes_a_sample_like_the_bundled_ones(tmp_path):
     assert gs.summarize(written)[0] > 100
 
 
+@pytest.fixture
+def github(monkeypatch):
+    """Fakes GitHub's REST API: set `github.response` to a dict, or to an HTTP status code to fail."""
+    import io
+    import urllib.error
+
+    class FakeGitHub:
+        response = {}
+        requests = []
+
+        def urlopen(self, request, timeout):
+            self.requests.append(request)
+            if isinstance(self.response, int):
+                raise urllib.error.HTTPError(request.full_url, self.response, "error", {}, io.BytesIO(b"{}"))
+            return io.BytesIO(json.dumps(self.response).encode())
+
+    fake = FakeGitHub()
+    monkeypatch.setenv("GH_TOKEN", "test-token")
+    monkeypatch.setattr(gs.urllib.request, "urlopen", fake.urlopen)
+    return fake
+
+
+def test_check_access_accepts_a_token_that_can_push(github):
+    github.response = {"permissions": {"pull": True, "push": True}}
+    assert gs.check_access("fajarnuha/gradle-dependency-viewer") == {}
+    request = github.requests[0]
+    assert request.full_url == "https://api.github.com/repos/fajarnuha/gradle-dependency-viewer"
+    assert request.get_header("Authorization") == "Bearer test-token"
+
+
+@pytest.mark.parametrize(
+    "response, message",
+    [
+        ({"permissions": {"pull": True, "push": False}}, "cannot push"),
+        (401, "must be a GitHub token"),
+        (404, "cannot see"),
+    ],
+)
+def test_check_access_rejects_credentials_that_cannot_push(github, capsys, response, message):
+    github.response = response
+    with pytest.raises(SystemExit) as exc:
+        gs.check_access("fajarnuha/gradle-dependency-viewer")
+    assert message in str(exc.value)
+
+
+def test_check_access_needs_a_token(monkeypatch):
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    with pytest.raises(SystemExit):
+        gs.check_access("fajarnuha/gradle-dependency-viewer")
+
+
 def test_convert_rejects_output_without_dependencies(tmp_path):
     txt = tmp_path / "dependencies.txt"
     txt.write_text("FAILURE: Build failed with an exception.\n", encoding="utf-8")
