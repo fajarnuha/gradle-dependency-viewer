@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -32,6 +33,17 @@ app = FastAPI()
 templates = Jinja2Templates(
     directory=[str(APP_ROOT / "templates"), str(APP_ROOT / "viz")]
 )
+
+
+@lru_cache(maxsize=None)
+def _asset_url(path: str) -> str:
+    """URL of a file under /static with a content hash, so browsers never pair a new page with a
+    stale cached script or stylesheet from a previous release."""
+    digest = hashlib.sha256((APP_ROOT / "static" / path).read_bytes()).hexdigest()[:10]
+    return f"/static/{path}?v={digest}"
+
+
+templates.env.globals["asset_url"] = _asset_url
 
 
 class ViewRequest(BaseModel):
