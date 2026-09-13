@@ -202,14 +202,17 @@ pipeline {
         always {
             // Remove the downloaded project and the generated sample, so the next build starts from a
             // clean checkout. The Gradle cache (GRADLE_CACHE_DIR) and the Docker image are kept.
+            // A failed checkout releases the agent before this runs, leaving no workspace to clean.
             script {
-                if (env.WORK_DIR) {
-                    dir(env.WORK_DIR) {
-                        deleteDir()
+                if (env.WORKSPACE) {
+                    if (env.WORK_DIR) {
+                        dir(env.WORK_DIR) {
+                            deleteDir()
+                        }
                     }
+                    deleteDir()
                 }
             }
-            deleteDir()
         }
     }
 }
