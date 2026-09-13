@@ -66,7 +66,7 @@ To set it up, create a Pipeline job ("Pipeline script from SCM") on this reposit
 | `SAMPLE_NAME` | repository name | Name shown on the home page |
 | `MODULE` | detected | Gradle path of the app module, e.g. `:app` |
 | `CONFIGURATION` | shortest `*ReleaseRuntimeClasspath` | Configuration to dump |
-| `ANDROID_IMAGE` | `cimg/android:2026.08` | Image with a JDK and the Android SDK; blank runs Gradle on the agent |
+| `ANDROID_IMAGE` | `ghcr.io/cirruslabs/android-sdk:35` | Image with a JDK and the Android SDK (amd64 and arm64); `eclipse-temurin:17-jdk` is a smaller JDK-only choice that works with recent Android Gradle plugins; blank runs Gradle on the agent |
 | `BASE_BRANCH` | `main` | Branch the pull request targets |
 | `DRY_RUN` | `false` | Only build and archive the JSON |
 

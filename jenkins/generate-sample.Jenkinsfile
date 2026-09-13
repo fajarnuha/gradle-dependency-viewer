@@ -30,8 +30,10 @@ pipeline {
             description: 'Gradle path of the app module, e.g. :app. Detected when blank.')
         string(name: 'CONFIGURATION', defaultValue: '', trim: true,
             description: 'Configuration to dump, e.g. releaseRuntimeClasspath. When blank, the shortest release runtime classpath is used.')
-        string(name: 'ANDROID_IMAGE', defaultValue: 'cimg/android:2026.08', trim: true,
-            description: 'Docker image with a JDK and the Android SDK that Gradle runs in. Blank runs Gradle on the agent.')
+        // Multi-arch (amd64 and arm64). Dumping dependencies needs no Android SDK with recent Android
+        // Gradle plugins, so a plain JDK image such as eclipse-temurin:17-jdk also works and is smaller.
+        string(name: 'ANDROID_IMAGE', defaultValue: 'ghcr.io/cirruslabs/android-sdk:35', trim: true,
+            description: 'Docker image with a JDK (and the Android SDK) that Gradle runs in. Blank runs Gradle on the agent.')
         string(name: 'BASE_BRANCH', defaultValue: 'main', trim: true,
             description: 'Branch of the viewer repository the pull request targets.')
         booleanParam(name: 'DRY_RUN', defaultValue: false,
