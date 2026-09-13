@@ -88,6 +88,19 @@ pipeline {
                         sh '''
                             cd "$PROJECT_DIR"
                             chmod +x gradlew
+                            # The wrapper gives up on a slow Gradle download after 10s; allow 2 minutes and retry.
+                            WRAPPER=gradle/wrapper/gradle-wrapper.properties
+                            if grep -q '^networkTimeout=' "$WRAPPER"; then
+                                sed -i.bak 's/^networkTimeout=.*/networkTimeout=120000/' "$WRAPPER"
+                            else
+                                echo 'networkTimeout=120000' >> "$WRAPPER"
+                            fi
+                            for attempt in 1 2 3; do
+                                if ./gradlew $GRADLE_ARGS --version > /dev/null; then break; fi
+                                if [ "$attempt" -eq 3 ]; then exit 1; fi
+                                echo "Downloading Gradle failed (attempt $attempt), retrying"
+                                sleep 15
+                            done
                             ./gradlew $GRADLE_ARGS --no-configure-on-demand --no-configuration-cache \
                                 --init-script "$WORKSPACE/jenkins/list-configurations.init.gradle" \
                                 "$GRADLE_MODULE_SELECTOR" help > "$WORK_DIR/configurations.txt"
