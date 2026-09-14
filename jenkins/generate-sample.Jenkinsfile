@@ -2,27 +2,25 @@
 // pull request that adds it to app/static/sample/.
 //
 // Job setup: a Pipeline job ("Pipeline script from SCM") on this repository with the script path
-// jenkins/generate-sample.Jenkinsfile. The agent needs git, curl, unzip and python3. Gradle runs in
-// ANDROID_IMAGE through the Docker Pipeline plugin; leave ANDROID_IMAGE blank to run it on the agent,
-// which then needs a JDK and the Android SDK. GITHUB_CREDENTIALS_ID names a "Username with password"
-// credential whose password is a GitHub token that can push branches to and open pull requests on
-// VIEWER_REPO.
+// jenkins/generate-sample.Jenkinsfile. It runs on the agent labelled "self" (an x86 machine), which
+// needs git, curl, unzip, python3 and a JDK (17 or newer; the Android SDK is optional, since dumping
+// dependencies needs none with recent Android Gradle plugins). Gradle runs directly on the agent, no
+// Docker. GITHUB_CREDENTIALS_ID names a "Username with password" credential whose password is a
+// GitHub token that can push branches to and open pull requests on VIEWER_REPO.
 //
-// Caches: Docker keeps ANDROID_IMAGE after its first pull, so later builds reuse it. With CACHE_GRADLE
-// on, Gradle's downloads (wrapper distributions, dependencies) stay in GRADLE_CACHE_DIR on the agent;
-// everything else a build downloads is deleted when it ends.
+// Caches: with CACHE_GRADLE on, Gradle's downloads (wrapper distributions, dependencies) stay in
+// GRADLE_CACHE_DIR on the agent; everything else a build downloads is deleted when it ends.
 //
-// The downloaded project's Gradle build is untrusted code: it runs in the container, and no
-// credential is bound while it runs.
+// The downloaded project's Gradle build is untrusted code: it runs on the agent as the Jenkins user,
+// with HOME pointed at a throwaway directory, and no credential is bound while it runs.
 
 pipeline {
-    agent any
+    agent { label 'self' }
 
     options {
         timeout(time: 90, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '20'))
-        // Builds share the Gradle cache, and Gradle cannot coordinate its cache locks between two
-        // containers (each has its own network namespace), so run one build at a time.
+        // Builds share the Gradle cache, so run one build at a time.
         disableConcurrentBuilds()
     }
 
@@ -37,10 +35,6 @@ pipeline {
             description: 'Gradle path of the app module, e.g. :app. Detected when blank.')
         string(name: 'CONFIGURATION', defaultValue: '', trim: true,
             description: 'Configuration to dump, e.g. releaseRuntimeClasspath. When blank, the shortest release runtime classpath is used.')
-        // Multi-arch (amd64 and arm64). Dumping dependencies needs no Android SDK with recent Android
-        // Gradle plugins, so a plain JDK image such as eclipse-temurin:17-jdk also works and is smaller.
-        string(name: 'ANDROID_IMAGE', defaultValue: 'ghcr.io/cirruslabs/android-sdk:35', trim: true,
-            description: 'Docker image with a JDK (and the Android SDK) that Gradle runs in. Blank runs Gradle on the agent.')
         booleanParam(name: 'CACHE_GRADLE', defaultValue: true,
             description: "Keep Gradle's downloads on the agent between builds. Off downloads everything again and deletes it afterwards.")
         string(name: 'BASE_BRANCH', defaultValue: 'main', trim: true,
@@ -201,7 +195,7 @@ pipeline {
     post {
         always {
             // Remove the downloaded project and the generated sample, so the next build starts from a
-            // clean checkout. The Gradle cache (GRADLE_CACHE_DIR) and the Docker image are kept.
+            // clean checkout. The Gradle cache (GRADLE_CACHE_DIR) is kept.
             // A failed checkout releases the agent before this runs, leaving no workspace to clean.
             script {
                 if (env.WORKSPACE) {
@@ -227,10 +221,9 @@ def exportEnv(String output) {
     }
 }
 
-// Runs Gradle steps in ANDROID_IMAGE (or on the agent when it is blank). HOME and the Android user
-// home live in WORK_DIR and are deleted with it; the Gradle user home is the persistent cache unless
-// CACHE_GRADLE is off. (A job that has not run since CACHE_GRADLE was added has no value for it yet,
-// hence the comparison with false.)
+// Runs Gradle steps on the agent. HOME and the Android user home live in WORK_DIR and are deleted
+// with it; the Gradle user home is the persistent cache unless CACHE_GRADLE is off. (A job that has
+// not run since CACHE_GRADLE was added has no value for it yet, hence the comparison with false.)
 def inAndroidEnv(Closure body) {
     def gradleHome = params.CACHE_GRADLE != false ? env.GRADLE_CACHE_DIR : "${env.WORK_DIR}/gradle-home"
     withEnv([
@@ -238,16 +231,9 @@ def inAndroidEnv(Closure body) {
         "GRADLE_USER_HOME=${gradleHome}",
         "ANDROID_USER_HOME=${env.WORK_DIR}/android-home",
     ]) {
-        // Created before Docker mounts it, or Docker would create it owned by root. Every build is
-        // untrusted, so remove what one could leave behind for the next to run: Gradle init scripts
-        // and properties in the shared Gradle user home.
-        sh 'mkdir -p "$GRADLE_USER_HOME" && rm -rf "$GRADLE_USER_HOME/init.d" "$GRADLE_USER_HOME/gradle.properties"'
-        if (params.ANDROID_IMAGE) {
-            docker.image(params.ANDROID_IMAGE).inside("-v ${gradleHome}:${gradleHome}") {
-                body()
-            }
-        } else {
-            body()
-        }
+        // Every build is untrusted, so remove what one could leave behind for the next to run: Gradle
+        // init scripts and properties in the shared Gradle user home.
+        sh 'mkdir -p "$HOME" "$GRADLE_USER_HOME" && rm -rf "$GRADLE_USER_HOME/init.d" "$GRADLE_USER_HOME/gradle.properties"'
+        body()
     }
 }

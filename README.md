@@ -57,7 +57,7 @@ uv run python app/parse.py path/to/my_app.txt
 ### Generating a Pre-Compiled Sample (Jenkins)
 `jenkins/generate-sample.Jenkinsfile` turns a public GitHub Android repository into a new sample in `app/static/sample/` and opens a pull request with it. It downloads the repository archive, checks that it is an Android Gradle project with a wrapper, finds the app module and a release runtime classpath configuration, runs `./gradlew <module>:dependencies --configuration <configuration>`, converts the output to JSON, and deletes the downloaded project when it finishes. A new dump of a project replaces that project's older sample.
 
-To set it up, create a Pipeline job ("Pipeline script from SCM") on this repository with the script path `jenkins/generate-sample.Jenkinsfile`, and add a "Username with password" credential with the ID `github-credentials` whose password is a GitHub token that can push branches and open pull requests (a non-dry run checks this before anything else runs). The agent needs `git`, `curl`, `unzip`, `python3` and Docker (with the Docker Pipeline plugin). Gradle runs inside `ANDROID_IMAGE`, because building a downloaded project runs its code.
+To set it up, create a Pipeline job ("Pipeline script from SCM") on this repository with the script path `jenkins/generate-sample.Jenkinsfile`, and add a "Username with password" credential with the ID `github-credentials` whose password is a GitHub token that can push branches and open pull requests (a non-dry run checks this before anything else runs). The job runs on the agent labelled `self` (an x86 machine), which needs `git`, `curl`, `unzip`, `python3` and a JDK (17 or newer). Gradle runs directly on the agent, without Docker; the Android SDK is optional, because recent Android Gradle plugins can dump dependencies without it. Building a downloaded project runs its code as the Jenkins user, so use an agent you are comfortable running untrusted builds on.
 
 | Parameter | Default | Purpose |
 |---|---|---|
@@ -66,11 +66,10 @@ To set it up, create a Pipeline job ("Pipeline script from SCM") on this reposit
 | `SAMPLE_NAME` | repository name | Name shown on the home page |
 | `MODULE` | detected | Gradle path of the app module, e.g. `:app` |
 | `CONFIGURATION` | shortest `*ReleaseRuntimeClasspath` | Configuration to dump |
-| `ANDROID_IMAGE` | `ghcr.io/cirruslabs/android-sdk:35` | Image with a JDK and the Android SDK (amd64 and arm64); `eclipse-temurin:17-jdk` is a smaller JDK-only choice that works with recent Android Gradle plugins; blank runs Gradle on the agent |
 | `BASE_BRANCH` | `main` | Branch the pull request targets |
 | `CACHE_GRADLE` | `true` | Keep Gradle's downloads on the agent between builds |
 | `DRY_RUN` | `false` | Only build and archive the JSON |
 
-Docker keeps `ANDROID_IMAGE` after the first pull, and with `CACHE_GRADLE` on, the Gradle distribution and dependencies stay in `~/.cache/gradle-dependency-viewer/gradle` on the agent, so only the first build of a project downloads everything. Builds run one at a time because they share that cache. To start over, delete the directory on the agent (and `docker rmi` the image to force a new pull).
+With `CACHE_GRADLE` on, the Gradle distribution and dependencies stay in `~/.cache/gradle-dependency-viewer/gradle` on the agent, so only the first build of a project downloads everything. Builds run one at a time because they share that cache. To start over, delete that directory on the agent.
 
 The steps are in `jenkins/generate_sample.py` (standard library only), so you can run them locally too, e.g. `python3 jenkins/generate_sample.py validate path/to/project`.
