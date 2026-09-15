@@ -3,7 +3,7 @@
 //
 // Job setup: a Pipeline job ("Pipeline script from SCM") on this repository with the script path
 // jenkins/generate-sample.Jenkinsfile. It runs on the agent labelled "self" (an x86 machine), which
-// needs git, curl, unzip, python3 and a JDK (17 or newer; the Android SDK is optional, since dumping
+// needs git, python3 and a JDK (17 or newer; the Android SDK is optional, since dumping
 // dependencies needs none with recent Android Gradle plugins). Gradle runs directly on the agent, no
 // Docker. GITHUB_CREDENTIALS_ID names a "Username with password" credential whose password is a
 // GitHub token that can push branches to and open pull requests on VIEWER_REPO.
@@ -74,13 +74,24 @@ pipeline {
                         python3 jenkins/generate_sample.py repo-info "$REPO_URL" --ref "$GIT_REF" --name "$SAMPLE_NAME"
                     '''))
                 }
+                // A git checkout rather than an archive, because some builds run git while Gradle
+                // configures them (Signal-Android reads the commit hash, time and tags). Only the one
+                // commit is fetched, without history; no stored credential is used and LFS files are
+                // not downloaded.
                 sh '''
                     rm -rf "$WORK_DIR"
-                    mkdir -p "$WORK_DIR/src"
-                    curl -fsSL --retry 3 -o "$WORK_DIR/source.zip" \
-                        "https://github.com/$REPO_OWNER/$REPO_NAME/archive/$REPO_SHA.zip"
-                    unzip -q "$WORK_DIR/source.zip" -d "$WORK_DIR/src"
-                    rm -f "$WORK_DIR/source.zip"
+                    mkdir -p "$WORK_DIR/src/$REPO_NAME"
+                    cd "$WORK_DIR/src/$REPO_NAME"
+                    git init -q
+                    export GIT_TERMINAL_PROMPT=0 GIT_LFS_SKIP_SMUDGE=1
+                    for attempt in 1 2 3; do
+                        if git -c credential.helper= fetch -q --depth 1 --no-tags \
+                            "https://github.com/$REPO_OWNER/$REPO_NAME.git" "$REPO_SHA"; then break; fi
+                        if [ "$attempt" -eq 3 ]; then exit 1; fi
+                        echo "Fetching the repository failed (attempt $attempt), retrying"
+                        sleep 15
+                    done
+                    git -c advice.detachedHead=false checkout -q FETCH_HEAD
                 '''
             }
         }

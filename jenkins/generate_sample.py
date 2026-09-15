@@ -112,7 +112,7 @@ def repo_info(url: str, ref: str = "HEAD", name: str | None = None) -> dict:
 
 
 def find_project_dir(path: Path) -> Path:
-    """Accepts the project itself or the folder the archive was extracted into (one top-level dir)."""
+    """Accepts the project itself or the folder it was checked out into (one top-level dir)."""
     if not path.is_dir():
         fail(f"{path} is not a directory.")
     if not any((path / f).is_file() for f in SETTINGS_FILES + BUILD_FILES):
