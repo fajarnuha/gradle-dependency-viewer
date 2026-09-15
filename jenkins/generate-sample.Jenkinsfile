@@ -31,10 +31,8 @@ pipeline {
             description: 'Branch, tag or commit to use. HEAD is the default branch.')
         string(name: 'SAMPLE_NAME', defaultValue: '', trim: true,
             description: 'Name shown on the home page. Defaults to the repository name.')
-        string(name: 'MODULE', defaultValue: '', trim: true,
-            description: 'Gradle path of the app module, e.g. :app. Detected when blank.')
-        string(name: 'CONFIGURATION', defaultValue: '', trim: true,
-            description: 'Configuration to dump, e.g. releaseRuntimeClasspath. When blank, the shortest release runtime classpath is used.')
+        string(name: 'GRADLE_COMMAND', defaultValue: './gradlew app:dependencies --configuration debugRuntimeClasspath', trim: true,
+            description: 'Gradle command whose output becomes the sample, run in the project directory. It must start with ./gradlew and is not run by a shell, so no redirects or pipes.')
         booleanParam(name: 'CACHE_GRADLE', defaultValue: true,
             description: "Keep Gradle's downloads on the agent between builds. Off downloads everything again and deletes it afterwards.")
         string(name: 'BASE_BRANCH', defaultValue: 'main', trim: true,
@@ -91,7 +89,7 @@ pipeline {
             steps {
                 script {
                     exportEnv(sh(returnStdout: true, script: '''
-                        python3 jenkins/generate_sample.py validate "$WORK_DIR/src" --module "$MODULE"
+                        python3 jenkins/generate_sample.py validate "$WORK_DIR/src" --command="$GRADLE_COMMAND"
                     '''))
                 }
             }
@@ -101,7 +99,6 @@ pipeline {
             steps {
                 script {
                     inAndroidEnv {
-                        // Lists the module's runtime classpath configurations without resolving them.
                         sh '''
                             cd "$PROJECT_DIR"
                             chmod +x gradlew
@@ -118,21 +115,10 @@ pipeline {
                                 echo "Downloading Gradle failed (attempt $attempt), retrying"
                                 sleep 15
                             done
-                            ./gradlew $GRADLE_ARGS --no-configure-on-demand --no-configuration-cache \
-                                --init-script "$WORKSPACE/jenkins/list-configurations.init.gradle" \
-                                "$GRADLE_MODULE_SELECTOR" help > "$WORK_DIR/configurations.txt"
-                        '''
-                    }
-                    exportEnv(sh(returnStdout: true, script: '''
-                        python3 jenkins/generate_sample.py pick-config --configuration "$CONFIGURATION" \
-                            < "$WORK_DIR/configurations.txt"
-                    '''))
-                    inAndroidEnv {
-                        sh '''
-                            cd "$PROJECT_DIR"
-                            if [ "$GRADLE_MODULE" = ":" ]; then TASK=":dependencies"; else TASK="$GRADLE_MODULE:dependencies"; fi
-                            ./gradlew $GRADLE_ARGS "$TASK" --configuration "$GRADLE_CONFIGURATION" \
-                                > "$WORK_DIR/dependencies.txt"
+                            # Runs GRADLE_COMMAND without a shell, so the parameter can only start the wrapper.
+                            python3 "$WORKSPACE/jenkins/generate_sample.py" run-gradle "$PROJECT_DIR" \
+                                --command="$GRADLE_COMMAND" --gradle-args="$GRADLE_ARGS" \
+                                --out "$WORK_DIR/dependencies.txt"
                         '''
                     }
                 }
@@ -146,7 +132,7 @@ pipeline {
                         python3 jenkins/generate_sample.py convert "$WORK_DIR/dependencies.txt" \
                             --name "$SAMPLE_SLUG" --out-dir "$SAMPLE_DIR"
                     '''))
-                    currentBuild.description = "${env.SAMPLE_SLUG}: ${env.GRADLE_MODULE} ${env.GRADLE_CONFIGURATION}"
+                    currentBuild.description = "${env.SAMPLE_SLUG}: ${params.GRADLE_COMMAND}"
                 }
                 archiveArtifacts artifacts: "${env.SAMPLE_DIR}/${env.SAMPLE_FILE}"
             }
@@ -172,7 +158,7 @@ pipeline {
                         git add -A "$SAMPLE_DIR"
                         git -c user.name="$GIT_BOT_NAME" -c user.email="$GIT_BOT_EMAIL" commit -q \
                             -m "Add $SAMPLE_SLUG dependency sample" \
-                            -m "Generated from https://github.com/$REPO_OWNER/$REPO_NAME at $REPO_SHA ($GRADLE_MODULE, $GRADLE_CONFIGURATION)."
+                            -m "Generated from https://github.com/$REPO_OWNER/$REPO_NAME at $REPO_SHA with: $GRADLE_COMMAND"
                         git -c credential.helper= -c "$AUTH" push \
                             "https://github.com/$VIEWER_REPO.git" "HEAD:refs/heads/$PR_BRANCH"
                     '''
@@ -182,7 +168,7 @@ pipeline {
                                 --branch "$PR_BRANCH" --base "$BASE_BRANCH" \
                                 --sample "$SAMPLE_DIR/$SAMPLE_FILE" \
                                 --source "https://github.com/$REPO_OWNER/$REPO_NAME" --sha "$REPO_SHA" \
-                                --module "$GRADLE_MODULE" --configuration "$GRADLE_CONFIGURATION" \
+                                --command="$GRADLE_COMMAND" \
                                 --replaces "$REPLACED_SAMPLES"
                         '''))
                         currentBuild.description = "${env.SAMPLE_SLUG}: ${env.PR_URL}"

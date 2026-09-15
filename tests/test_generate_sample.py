@@ -22,15 +22,9 @@ def make_project(root: Path, files: dict[str, str]) -> Path:
 
 
 ANDROID_PROJECT = {
-    "settings.gradle.kts": 'include(":app", ":core")\n',
+    "settings.gradle.kts": 'include(":app")\n',
     "gradlew": "#!/bin/sh\n",
-    "build.gradle.kts": "plugins {\n    alias(libs.plugins.android.application) apply false\n}\n",
     "app/build.gradle.kts": "plugins {\n    alias(libs.plugins.android.application)\n}\n",
-    "app/src/main/AndroidManifest.xml": "<manifest/>",
-    "core/build.gradle.kts": "plugins {\n    alias(libs.plugins.android.library)\n}\n",
-    # Convention plugins mention the application plugin but are not an app module
-    "build-logic/settings.gradle.kts": "",
-    "build-logic/convention/build.gradle.kts": 'gradlePlugin { plugins { register("androidApplication") } }\n',
 }
 
 
@@ -92,103 +86,73 @@ def test_sample_slug_has_no_underscore(name, slug):
 # --- validate ---
 
 
-def test_validate_finds_app_module_in_extracted_archive(tmp_path):
+def test_validate_finds_the_project_in_an_extracted_archive(tmp_path):
     make_project(tmp_path / "architecture-samples-abc123", ANDROID_PROJECT)
-    result = gs.validate(tmp_path)
-    assert result["PROJECT_DIR"] == str(tmp_path / "architecture-samples-abc123")
-    assert result["GRADLE_MODULE_SELECTOR"] == "-Pgdv.moduleDir=app"
-
-
-def test_validate_prefers_the_app_directory(tmp_path):
-    make_project(
-        tmp_path,
-        {
-            **ANDROID_PROJECT,
-            "wear/build.gradle": "apply plugin: 'com.android.application'\n",
-            "wear/src/main/AndroidManifest.xml": "<manifest/>",
-        },
-    )
-    assert gs.validate(tmp_path)["GRADLE_MODULE_SELECTOR"] == "-Pgdv.moduleDir=app"
-
-
-def test_validate_finds_a_differently_named_app_module(tmp_path):
-    make_project(
-        tmp_path,
-        {
-            "settings.gradle": "include ':mobile'\n",
-            "gradlew": "",
-            "mobile/build.gradle": 'plugins {\n    id "com.android.application"\n}\n',
-        },
-    )
-    assert gs.validate(tmp_path)["GRADLE_MODULE_SELECTOR"] == "-Pgdv.moduleDir=mobile"
-
-
-def test_validate_accepts_an_explicit_module(tmp_path):
-    make_project(tmp_path, ANDROID_PROJECT)
-    assert gs.validate(tmp_path, "core")["GRADLE_MODULE_SELECTOR"] == "-Pgdv.module=:core"
+    result = gs.validate(tmp_path, gs.EXAMPLE_COMMAND)
+    assert result == {"PROJECT_DIR": str(tmp_path / "architecture-samples-abc123")}
 
 
 @pytest.mark.parametrize(
-    "files, module",
+    "files, command",
     [
         ({"README.md": ""}, None),  # not a Gradle project
-        ({"settings.gradle": "", "app/build.gradle": "apply plugin: 'com.android.application'"}, None),  # no wrapper
-        ({"settings.gradle": "", "gradlew": "", "build.gradle": "plugins { id 'java' }"}, None),  # not Android
-        ({"settings.gradle": "", "gradlew": "", "build.gradle": "plugins { id 'java' }"}, ":app"),
-        (ANDROID_PROJECT, "--init-script=evil.gradle"),
+        ({"settings.gradle": "", "app/build.gradle": ""}, None),  # no wrapper
+        (ANDROID_PROJECT, "gradle app:dependencies"),  # not the wrapper
     ],
 )
-def test_validate_rejects(tmp_path, files, module):
+def test_validate_rejects(tmp_path, files, command):
     make_project(tmp_path, files)
     with pytest.raises(SystemExit):
-        gs.validate(tmp_path, module)
+        gs.validate(tmp_path, command)
 
 
-# --- pick-config ---
+# --- run-gradle ---
+
+
+def test_gradle_command_splits_like_a_shell():
+    assert gs.gradle_command("./gradlew :app:dependencies --configuration 'play Release' -Pa=\"b c\"") == [
+        "./gradlew",
+        ":app:dependencies",
+        "--configuration",
+        "play Release",
+        "-Pa=b c",
+    ]
 
 
 @pytest.mark.parametrize(
-    "names, expected",
+    "command",
     [
-        (["debugRuntimeClasspath", "releaseRuntimeClasspath", "releaseUnitTestRuntimeClasspath"], "releaseRuntimeClasspath"),
-        (["fullDebugRuntimeClasspath", "fullReleaseRuntimeClasspath", "minimalReleaseRuntimeClasspath"], "fullReleaseRuntimeClasspath"),
-        (
-            ["playProdReleaseRuntimeClasspath", "playStagingReleaseRuntimeClasspath", "websiteProdReleaseRuntimeClasspath"],
-            "playProdReleaseRuntimeClasspath",
-        ),
-        (["debugRuntimeClasspath", "debugAndroidTestRuntimeClasspath"], "debugRuntimeClasspath"),
+        "",
+        "./gradlew",
+        "gradle app:dependencies",
+        "sh -c './gradlew help'",
+        "./gradlew app:dependencies > dependencies.txt",
+        "./gradlew help; rm -rf /",
+        "./gradlew help && curl example.com",
+        "./gradlew $(id)",
+        "./gradlew `id`",
+        "./gradlew 'unbalanced",
     ],
 )
-def test_pick_configuration(names, expected):
-    assert gs.pick_configuration(names) == expected
-
-
-def test_pick_config_reads_the_init_script_listing():
-    listing = "\n".join(
-        [
-            "> Task :help",
-            "GDV_MODULE=:Signal-Android",
-            "GDV_CONFIGURATION=playProdDebugRuntimeClasspath",
-            "GDV_CONFIGURATION=playProdReleaseRuntimeClasspath",
-            "BUILD SUCCESSFUL in 3s",
-        ]
-    )
-    assert gs.pick_config(listing) == {
-        "GRADLE_MODULE": ":Signal-Android",
-        "GRADLE_CONFIGURATION": "playProdReleaseRuntimeClasspath",
-    }
-    assert gs.pick_config(listing, "playProdDebugRuntimeClasspath")["GRADLE_CONFIGURATION"] == "playProdDebugRuntimeClasspath"
-
-
-@pytest.mark.parametrize("requested", ["missingRuntimeClasspath", "release; rm -rf /"])
-def test_pick_config_rejects_unknown_configurations(requested):
+def test_gradle_command_rejects(command):
     with pytest.raises(SystemExit):
-        gs.pick_config("GDV_MODULE=:app\nGDV_CONFIGURATION=releaseRuntimeClasspath", requested)
+        gs.gradle_command(command)
 
 
-def test_pick_config_rejects_empty_listing():
-    with pytest.raises(SystemExit):
-        gs.pick_config("FAILURE: Build failed with an exception.")
+def test_run_gradle_runs_the_wrapper_without_a_shell(tmp_path):
+    make_project(tmp_path, {"gradlew": '#!/bin/sh\necho "args: $*"\n'})
+    (tmp_path / "gradlew").chmod(0o755)
+    out = tmp_path / "dependencies.txt"
+    gs.run_gradle(tmp_path, "./gradlew app:dependencies --configuration 'a b'", out, "--no-daemon --console=plain")
+    assert out.read_text() == "args: app:dependencies --configuration a b --no-daemon --console=plain\n"
+
+
+def test_run_gradle_fails_when_gradle_fails(tmp_path):
+    make_project(tmp_path, {"gradlew": "#!/bin/sh\nexit 3\n"})
+    (tmp_path / "gradlew").chmod(0o755)
+    with pytest.raises(SystemExit) as exc:
+        gs.run_gradle(tmp_path, gs.EXAMPLE_COMMAND, tmp_path / "dependencies.txt")
+    assert "code 3" in str(exc.value)
 
 
 # --- convert ---

@@ -55,7 +55,7 @@ uv run python app/parse.py path/to/my_app.txt
 ```
 
 ### Generating a Pre-Compiled Sample (Jenkins)
-`jenkins/generate-sample.Jenkinsfile` turns a public GitHub Android repository into a new sample in `app/static/sample/` and opens a pull request with it. It downloads the repository archive, checks that it is an Android Gradle project with a wrapper, finds the app module and a release runtime classpath configuration, runs `./gradlew <module>:dependencies --configuration <configuration>`, converts the output to JSON, and deletes the downloaded project when it finishes. A new dump of a project replaces that project's older sample.
+`jenkins/generate-sample.Jenkinsfile` turns a public GitHub Android repository into a new sample in `app/static/sample/` and opens a pull request with it. It downloads the repository archive, checks that it is a Gradle project with a wrapper, runs `GRADLE_COMMAND` (by default `./gradlew app:dependencies --configuration debugRuntimeClasspath`), converts the output to JSON, and deletes the downloaded project when it finishes. A new dump of a project replaces that project's older sample.
 
 To set it up, create a Pipeline job ("Pipeline script from SCM") on this repository with the script path `jenkins/generate-sample.Jenkinsfile`, and add a "Username with password" credential with the ID `github-credentials` whose password is a GitHub token that can push branches and open pull requests (a non-dry run checks this before anything else runs). The job runs on the agent labelled `self` (an x86 machine), which needs `git`, `curl`, `unzip`, `python3` and a JDK (17 or newer). Gradle runs directly on the agent, without Docker; the Android SDK is optional, because recent Android Gradle plugins can dump dependencies without it. Building a downloaded project runs its code as the Jenkins user, so use an agent you are comfortable running untrusted builds on.
 
@@ -64,8 +64,7 @@ To set it up, create a Pipeline job ("Pipeline script from SCM") on this reposit
 | `REPO_URL` | | e.g. `https://github.com/android/architecture-samples` |
 | `GIT_REF` | `HEAD` | Branch, tag or commit |
 | `SAMPLE_NAME` | repository name | Name shown on the home page |
-| `MODULE` | detected | Gradle path of the app module, e.g. `:app` |
-| `CONFIGURATION` | shortest `*ReleaseRuntimeClasspath` | Configuration to dump |
+| `GRADLE_COMMAND` | `./gradlew app:dependencies --configuration debugRuntimeClasspath` | Command whose output becomes the sample. It must start with `./gradlew` and runs without a shell, so no redirects or pipes. Change the module or configuration for apps whose module is not `:app` or that have product flavors, e.g. `./gradlew :Signal-Android:dependencies --configuration playProdReleaseRuntimeClasspath` |
 | `BASE_BRANCH` | `main` | Branch the pull request targets |
 | `CACHE_GRADLE` | `true` | Keep Gradle's downloads on the agent between builds |
 | `DRY_RUN` | `false` | Only build and archive the JSON |

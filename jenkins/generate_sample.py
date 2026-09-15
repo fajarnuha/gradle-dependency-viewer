@@ -4,8 +4,8 @@ pre-compiled sample in app/static/sample/. Standard library only, so any agent w
 Values meant for the pipeline are printed to stdout as KEY=value lines; logs go to stderr.
 
   repo-info <url> [--ref REF] [--name NAME]  check the GitHub URL, resolve the commit, name the sample
-  validate <dir> [--module :app]             check it is an Android Gradle project, find the app module
-  pick-config [--configuration NAME] < out   choose what to dump from the init script's listing
+  validate <dir> [--command CMD]             check it is a Gradle project with a wrapper, and check CMD
+  run-gradle <dir> --command CMD --out FILE  run the Gradle command without a shell, output into FILE
   convert <txt> --name NAME [--out-dir DIR]  parse the Gradle output into a sample JSON
   check-access --repo OWNER/REPO             check the GitHub token in GH_TOKEN can push to the repo
   open-pr --repo OWNER/REPO --branch B ...   open the pull request (GitHub token in GH_TOKEN)
@@ -17,6 +17,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import urllib.error
@@ -35,17 +36,12 @@ from utils import get_root_key_and_nodes  # noqa: E402
 
 GITHUB_URL = re.compile(r"^https://github\.com/([A-Za-z0-9][A-Za-z0-9-]{0,38})/([A-Za-z0-9._-]{1,100}?)(?:\.git)?/?$")
 COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
-MODULE_PATH = re.compile(r"^:$|^(?::[A-Za-z0-9._-]+)+$")
-CONFIGURATION_NAME = re.compile(r"^[A-Za-z0-9_]+$")
-APPLICATION_PLUGIN = re.compile(r"com\.android\.application|android[._-]?application", re.IGNORECASE)
-ANDROID_MARKER = re.compile(r"com\.android\.|plugins\.android|^\s*android\s*\{", re.MULTILINE)
-APPLY_FALSE = re.compile(r"apply\s*\(?\s*false")
+EXAMPLE_COMMAND = "./gradlew app:dependencies --configuration debugRuntimeClasspath"
+# GRADLE_COMMAND is not run by a shell, so redirects, pipes, separators and substitutions would only
+# reach Gradle as bogus arguments; they are rejected with a clear message instead.
+SHELL_SYNTAX = re.compile(r"[|&;<>`]|\$\(")
 BUILD_FILES = ("build.gradle", "build.gradle.kts")
 SETTINGS_FILES = ("settings.gradle", "settings.gradle.kts")
-# Never the app module: build output, and build logic whose convention plugins mention the
-# application plugin without being an app. Hidden directories (.git, .gradle, ...) are skipped too.
-SKIP_DIRS = {"build", "buildSrc", "build-logic", "node_modules"}
-MAX_DEPTH = 4
 
 
 def fail(message: str):
@@ -126,101 +122,46 @@ def find_project_dir(path: Path) -> Path:
     return path
 
 
-def gradle_modules(root: Path):
-    """Yields (module dir, build file) for the modules of the root build, skipping included builds."""
-    for dirpath, dirnames, filenames in os.walk(root):
-        current = Path(dirpath)
-        depth = len(current.relative_to(root).parts)
-        if current != root and any(f in filenames for f in SETTINGS_FILES):
-            dirnames.clear()
-            continue
-        dirnames[:] = [
-            d for d in sorted(dirnames) if d not in SKIP_DIRS and not d.startswith(".")
-        ] if depth < MAX_DEPTH else []
-        build_file = next((current / f for f in BUILD_FILES if f in filenames), None)
-        if build_file:
-            yield current, build_file
-
-
-def applies_application_plugin(build_file: Path) -> bool:
-    for line in build_file.read_text(encoding="utf-8", errors="replace").splitlines():
-        code = line.split("//", 1)[0]
-        if APPLICATION_PLUGIN.search(code) and not APPLY_FALSE.search(code):
-            return True
-    return False
-
-
-def validate(path: Path, module: str | None = None) -> dict:
+def validate(path: Path, command: str | None = None) -> dict:
     project = find_project_dir(path)
     if not any((project / f).is_file() for f in SETTINGS_FILES):
         fail(f"{project.name} has no settings.gradle(.kts), so it is not a Gradle project.")
     if not (project / "gradlew").is_file():
         fail(f"{project.name} has no Gradle wrapper (gradlew), so its Gradle version is unknown.")
+    if command is not None:
+        gradle_command(command)
+    return {"PROJECT_DIR": str(project)}
 
-    modules = list(gradle_modules(project))
-    apps = [d for d, build_file in modules if applies_application_plugin(build_file)]
 
-    if module:
-        module = module.strip()
-        module = module if module.startswith(":") else f":{module}"
-        if not MODULE_PATH.match(module):
-            fail(f"'{module}' is not a Gradle module path like :app.")
-        is_android = apps or any(
-            ANDROID_MARKER.search(f.read_text(encoding="utf-8", errors="replace")) for _, f in modules
+# --- run-gradle ---
+
+
+def gradle_command(command: str) -> list[str]:
+    """Splits GRADLE_COMMAND into arguments like a shell would, without running one. Only the
+    project's wrapper may run, so the parameter cannot start any other program."""
+    try:
+        argv = shlex.split(command)
+    except ValueError as e:
+        fail(f"GRADLE_COMMAND cannot be parsed: {e}.")
+    if len(argv) < 2 or argv[0] != "./gradlew":
+        fail(f"GRADLE_COMMAND must be ./gradlew followed by tasks and options, e.g. {EXAMPLE_COMMAND}; got '{command}'.")
+    shell = [a for a in argv if SHELL_SYNTAX.search(a)]
+    if shell:
+        fail(
+            f"GRADLE_COMMAND is not run by a shell, so it cannot use {' '.join(shell)}. "
+            "The job saves Gradle's output itself."
         )
-        if not is_android:
-            fail(f"{project.name} does not use the Android Gradle plugin.")
-        selector = f"-Pgdv.module={module}"
-        log(f"Using module {module} as requested.")
-    else:
-        if not apps:
-            fail(
-                f"No module of {project.name} applies the Android application plugin, so it does not look "
-                "like an Android app. Set MODULE to the Gradle path of the app module if it is set up differently."
-            )
-        app = min(
-            apps,
-            key=lambda d: (
-                not (d / "src" / "main" / "AndroidManifest.xml").is_file(),
-                d.name != "app",
-                len(d.relative_to(project).parts),
-                str(d),
-            ),
-        )
-        module_dir = app.relative_to(project).as_posix() or "."
-        selector = f"-Pgdv.moduleDir={module_dir}"
-        others = [d.relative_to(project).as_posix() or "." for d in apps if d != app]
-        log(f"App module directory: {module_dir}" + (f" (also found: {', '.join(others)}; set MODULE to pick one)" if others else ""))
-
-    return {"PROJECT_DIR": str(project), "GRADLE_MODULE_SELECTOR": selector}
+    return argv
 
 
-# --- pick-config ---
-
-
-def pick_configuration(names: list[str], requested: str | None = None) -> str:
-    """The requested configuration, or the shortest release runtime classpath that is not for tests."""
-    if requested:
-        if not CONFIGURATION_NAME.match(requested):
-            fail(f"'{requested}' is not a configuration name.")
-        if requested not in names:
-            fail(f"Configuration {requested} does not exist. Available: {', '.join(names) or 'none'}.")
-        return requested
-    candidates = [n for n in names if "test" not in n.lower()]
-    if not candidates:
-        fail(f"The module has no runtime classpath configuration to dump. Found: {', '.join(names) or 'none'}.")
-    return min(candidates, key=lambda n: (not n.endswith("ReleaseRuntimeClasspath") and n != "releaseRuntimeClasspath", len(n), n))
-
-
-def pick_config(listing: str, requested: str | None = None) -> dict:
-    values = [line.strip().partition("=") for line in listing.splitlines() if line.startswith("GDV_")]
-    module = next((v for k, _, v in values if k == "GDV_MODULE"), None)
-    if module is None:
-        fail("The configuration listing is empty; check the Gradle output above.")
-    names = [v for k, _, v in values if k == "GDV_CONFIGURATION"]
-    configuration = pick_configuration(names, (requested or "").strip() or None)
-    log(f"Dumping {module} {configuration} (available: {', '.join(names)})")
-    return {"GRADLE_MODULE": module, "GRADLE_CONFIGURATION": configuration}
+def run_gradle(project: Path, command: str, out: Path, gradle_args: str = "") -> dict:
+    argv = gradle_command(command) + shlex.split(gradle_args)
+    log(f"Running {shlex.join(argv)}")
+    with out.open("wb") as output:
+        result = subprocess.run(argv, cwd=project, stdout=output, check=False)
+    if result.returncode != 0:
+        fail(f"Gradle exited with code {result.returncode}; see its output above.")
+    return {}
 
 
 # --- convert ---
@@ -321,8 +262,7 @@ def open_pull_request(args) -> dict:
             "| | |",
             "|---|---|",
             f"| Source | {args.source} @ `{args.sha[:12]}` |",
-            f"| Module | `{args.module}` |",
-            f"| Configuration | `{args.configuration}` |",
+            f"| Gradle command | `{args.gradle_command}` |",
             f"| Entries | {entries:,} |",
             f"| Unique modules | {modules:,} |",
             f"| File | `{sample.as_posix()}` |",
@@ -349,12 +289,16 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--ref", default="HEAD")
     p.add_argument("--name", default="")
 
+    # --command is stored as gradle_command, because args.command names the subcommand.
     p = commands.add_parser("validate")
     p.add_argument("path", type=Path)
-    p.add_argument("--module", default="")
+    p.add_argument("--command", dest="gradle_command")
 
-    p = commands.add_parser("pick-config")
-    p.add_argument("--configuration", default="")
+    p = commands.add_parser("run-gradle")
+    p.add_argument("path", type=Path)
+    p.add_argument("--command", dest="gradle_command", required=True)
+    p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--gradle-args", default="")
 
     p = commands.add_parser("convert")
     p.add_argument("txt", type=Path)
@@ -365,17 +309,18 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--repo", required=True)
 
     p = commands.add_parser("open-pr")
-    for option in ("--repo", "--branch", "--base", "--sample", "--source", "--sha", "--module", "--configuration"):
+    for option in ("--repo", "--branch", "--base", "--sample", "--source", "--sha"):
         p.add_argument(option, required=True)
+    p.add_argument("--command", dest="gradle_command", required=True)
     p.add_argument("--replaces", default="")
 
     args = parser.parse_args(argv)
     if args.command == "repo-info":
         result = repo_info(args.url, args.ref, args.name or None)
     elif args.command == "validate":
-        result = validate(args.path, args.module or None)
-    elif args.command == "pick-config":
-        result = pick_config(sys.stdin.read(), args.configuration)
+        result = validate(args.path, args.gradle_command)
+    elif args.command == "run-gradle":
+        result = run_gradle(args.path, args.gradle_command, args.out, args.gradle_args)
     elif args.command == "convert":
         result = convert(args.txt, args.name, args.out_dir)
     elif args.command == "check-access":
