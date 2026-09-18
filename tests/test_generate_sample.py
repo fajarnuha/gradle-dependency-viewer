@@ -106,6 +106,75 @@ def test_validate_rejects(tmp_path, files, command):
         gs.validate(tmp_path, command)
 
 
+# --- choose-command ---
+
+
+def fake_agy(tmp_path: Path, stdout: str, exit_code: int = 0) -> str:
+    """A stand-in for the Antigravity CLI that prints `stdout` whatever it is asked."""
+    script = tmp_path / "agy"
+    script.write_text(f"#!/bin/sh\ncat <<'JSON'\n{stdout}\nJSON\nexit {exit_code}\n", encoding="utf-8")
+    script.chmod(0o755)
+    return str(script)
+
+
+def envelope(**fields) -> str:
+    return json.dumps({"conversation_id": "test", "status": "SUCCESS", "response": "", **fields})
+
+
+def test_collect_gradle_files_reads_the_build_files(tmp_path):
+    make_project(
+        tmp_path,
+        {
+            **ANDROID_PROJECT,
+            "gradle.properties": "android.useAndroidX=true\n",
+            "app/src/main/java/App.kt": "class App",  # not a Gradle file
+            "build/generated/build.gradle.kts": "// build output",  # skipped
+        },
+    )
+    assert [path for path, _ in gs.collect_gradle_files(tmp_path)] == [
+        "gradle.properties",
+        "settings.gradle.kts",
+        "app/build.gradle.kts",
+    ]
+    assert "android.application" in dict(gs.collect_gradle_files(tmp_path))["app/build.gradle.kts"]
+
+
+def test_choose_command_takes_the_structured_answer(tmp_path):
+    make_project(tmp_path, ANDROID_PROJECT)
+    command = "./gradlew :Signal-Android:dependencies --configuration playProdDebugRuntimeClasspath"
+    agy = fake_agy(tmp_path, envelope(structured_output={"command": command, "reason": "flavors"}))
+    assert gs.choose_command(tmp_path, agy) == {"GRADLE_CMD": command}
+
+
+def test_choose_command_reads_the_answer_from_fenced_json(tmp_path):
+    make_project(tmp_path, ANDROID_PROJECT)
+    answer = json.dumps({"command": gs.EXAMPLE_COMMAND})
+    agy = fake_agy(tmp_path, envelope(response=f"```json\n{answer}\n```\n{answer}\n"))
+    assert gs.choose_command(tmp_path, agy) == {"GRADLE_CMD": gs.EXAMPLE_COMMAND}
+
+
+@pytest.mark.parametrize(
+    "stdout, exit_code",
+    [
+        (envelope(structured_output={"command": "UNKNOWN", "reason": "no app module"}), 0),
+        (envelope(structured_output={"command": "rm -rf /"}), 0),  # not the wrapper
+        (envelope(response="I could not work it out."), 0),  # no JSON answer
+        ("not json at all", 0),
+        (envelope(structured_output={"command": gs.EXAMPLE_COMMAND}), 1),  # the CLI failed
+    ],
+)
+def test_choose_command_rejects(tmp_path, stdout, exit_code):
+    make_project(tmp_path, ANDROID_PROJECT)
+    with pytest.raises(SystemExit):
+        gs.choose_command(tmp_path, fake_agy(tmp_path, stdout, exit_code))
+
+
+def test_choose_command_without_the_cli_installed(tmp_path):
+    make_project(tmp_path, ANDROID_PROJECT)
+    with pytest.raises(SystemExit):
+        gs.choose_command(tmp_path, str(tmp_path / "missing-agy"))
+
+
 # --- run-gradle ---
 
 

@@ -3,7 +3,7 @@
 //
 // Job setup: a Pipeline job ("Pipeline script from SCM") on this repository with the script path
 // jenkins/generate-sample.Jenkinsfile. It runs on the agent labelled "self" (an x86 machine), which
-// needs git, python3 and a JDK (17 or newer; the Android SDK is optional, since dumping
+// needs git, python3, the Antigravity CLI (AGY, only when GRADLE_COMMAND is blank) and a JDK (17 or newer; the Android SDK is optional, since dumping
 // dependencies needs none with recent Android Gradle plugins). Gradle runs directly on the agent, no
 // Docker. GITHUB_CREDENTIALS_ID names a "Username with password" credential whose password is a
 // GitHub token that can push branches to and open pull requests on VIEWER_REPO.
@@ -31,8 +31,8 @@ pipeline {
             description: 'Branch, tag or commit to use. HEAD is the default branch.')
         string(name: 'SAMPLE_NAME', defaultValue: '', trim: true,
             description: 'Name shown on the home page. Defaults to the repository name.')
-        string(name: 'GRADLE_COMMAND', defaultValue: './gradlew app:dependencies --configuration debugRuntimeClasspath', trim: true,
-            description: 'Gradle command whose output becomes the sample, run in the project directory. It must start with ./gradlew and is not run by a shell, so no redirects or pipes.')
+        string(name: 'GRADLE_COMMAND', defaultValue: '', trim: true,
+            description: 'Gradle command whose output becomes the sample, e.g. ./gradlew app:dependencies --configuration debugRuntimeClasspath. Blank asks the Antigravity CLI for it, from the project\'s Gradle files. It must start with ./gradlew and is not run by a shell, so no redirects or pipes.')
         booleanParam(name: 'CACHE_GRADLE', defaultValue: true,
             description: "Keep Gradle's downloads on the agent between builds. Off downloads everything again and deletes it afterwards.")
         string(name: 'BASE_BRANCH', defaultValue: 'main', trim: true,
@@ -48,6 +48,7 @@ pipeline {
         GIT_BOT_NAME = 'gradle-dependency-viewer bot'
         GIT_BOT_EMAIL = 'gradle-dependency-viewer-bot@users.noreply.github.com'
         GRADLE_ARGS = '--no-daemon --console=plain'
+        AGY = '/home/fajar/.local/bin/agy'
     }
 
     stages {
@@ -106,6 +107,24 @@ pipeline {
             }
         }
 
+        // GRADLE_CMD, not GRADLE_COMMAND, so the parameter keeps the value the build was started with.
+        stage('Choose Gradle command') {
+            steps {
+                script {
+                    if (params.GRADLE_COMMAND?.trim()) {
+                        env.GRADLE_CMD = params.GRADLE_COMMAND.trim()
+                        echo "Using the GRADLE_COMMAND parameter: ${env.GRADLE_CMD}"
+                    } else {
+                        // Reads the project's Gradle files and answers with the command, which avoids
+                        // the extra Gradle run that listing the configurations would need.
+                        exportEnv(sh(returnStdout: true, script: '''
+                            python3 jenkins/generate_sample.py choose-command "$PROJECT_DIR" --agy "$AGY"
+                        '''))
+                    }
+                }
+            }
+        }
+
         stage('Dump dependencies') {
             steps {
                 script {
@@ -126,9 +145,9 @@ pipeline {
                                 echo "Downloading Gradle failed (attempt $attempt), retrying"
                                 sleep 15
                             done
-                            # Runs GRADLE_COMMAND without a shell, so the parameter can only start the wrapper.
+                            # Runs the command without a shell, so it can only start the wrapper.
                             python3 "$WORKSPACE/jenkins/generate_sample.py" run-gradle "$PROJECT_DIR" \
-                                --command="$GRADLE_COMMAND" --gradle-args="$GRADLE_ARGS" \
+                                --command="$GRADLE_CMD" --gradle-args="$GRADLE_ARGS" \
                                 --out "$WORK_DIR/dependencies.txt"
                         '''
                     }
@@ -143,7 +162,7 @@ pipeline {
                         python3 jenkins/generate_sample.py convert "$WORK_DIR/dependencies.txt" \
                             --name "$SAMPLE_SLUG" --out-dir "$SAMPLE_DIR"
                     '''))
-                    currentBuild.description = "${env.SAMPLE_SLUG}: ${params.GRADLE_COMMAND}"
+                    currentBuild.description = "${env.SAMPLE_SLUG}: ${env.GRADLE_CMD}"
                 }
                 archiveArtifacts artifacts: "${env.SAMPLE_DIR}/${env.SAMPLE_FILE}"
             }
@@ -169,7 +188,7 @@ pipeline {
                         git add -A "$SAMPLE_DIR"
                         git -c user.name="$GIT_BOT_NAME" -c user.email="$GIT_BOT_EMAIL" commit -q \
                             -m "Add $SAMPLE_SLUG dependency sample" \
-                            -m "Generated from https://github.com/$REPO_OWNER/$REPO_NAME at $REPO_SHA with: $GRADLE_COMMAND"
+                            -m "Generated from https://github.com/$REPO_OWNER/$REPO_NAME at $REPO_SHA with: $GRADLE_CMD"
                         git -c credential.helper= -c "$AUTH" push \
                             "https://github.com/$VIEWER_REPO.git" "HEAD:refs/heads/$PR_BRANCH"
                     '''
@@ -179,7 +198,7 @@ pipeline {
                                 --branch "$PR_BRANCH" --base "$BASE_BRANCH" \
                                 --sample "$SAMPLE_DIR/$SAMPLE_FILE" \
                                 --source "https://github.com/$REPO_OWNER/$REPO_NAME" --sha "$REPO_SHA" \
-                                --command="$GRADLE_COMMAND" \
+                                --command="$GRADLE_CMD" \
                                 --replaces "$REPLACED_SAMPLES"
                         '''))
                         currentBuild.description = "${env.SAMPLE_SLUG}: ${env.PR_URL}"
