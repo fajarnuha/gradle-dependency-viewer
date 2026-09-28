@@ -155,12 +155,17 @@ pipeline {
             }
         }
 
+        // Also records the source repository and commit in the sample, and the app's launcher icon
+        // (only a PNG or WebP bitmap from inside the project is embedded, since the build may have
+        // changed the files).
         stage('Convert') {
             steps {
                 script {
                     exportEnv(sh(returnStdout: true, script: '''
                         python3 jenkins/generate_sample.py convert "$WORK_DIR/dependencies.txt" \
-                            --name "$SAMPLE_SLUG" --out-dir "$SAMPLE_DIR"
+                            --name "$SAMPLE_SLUG" --out-dir "$SAMPLE_DIR" \
+                            --repository "https://github.com/$REPO_OWNER/$REPO_NAME" --commit "$REPO_SHA" \
+                            --project "$PROJECT_DIR" --command="$GRADLE_CMD"
                     '''))
                     currentBuild.description = "${env.SAMPLE_SLUG}: ${env.GRADLE_CMD}"
                 }

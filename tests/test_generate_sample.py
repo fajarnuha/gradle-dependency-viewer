@@ -234,13 +234,106 @@ def test_convert_writes_a_sample_like_the_bundled_ones(tmp_path):
     out_dir = tmp_path / "sample"
     make_project(out_dir, {"demo_010101.json": "{}", "demo-extra_010101.json": "{}"})
 
-    result = gs.convert(txt, "Demo", out_dir, now=datetime(2026, 9, 13, 8, 5))
+    meta = {"repository": "https://github.com/owner/demo", "commit": "a" * 40}
+    result = gs.convert(txt, "Demo", out_dir, now=datetime(2026, 9, 13, 8, 5), meta=meta)
 
     assert result == {"SAMPLE_FILE": "demo_130805.json", "REPLACED_SAMPLES": "demo_010101.json"}
     assert sorted(p.name for p in out_dir.iterdir()) == ["demo-extra_010101.json", "demo_130805.json"]
     written = json.loads((out_dir / "demo_130805.json").read_text(encoding="utf-8"))
-    assert written == bundled
+    assert list(written)[0] == "meta" and written["meta"] == meta
+    assert {k: v for k, v in written.items() if k != "meta"} == {k: v for k, v in bundled.items() if k != "meta"}
     assert gs.summarize(written)[0] > 100
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 16
+WEBP = b"RIFF\0\0\0\0WEBPVP8 " + b"\0" * 16
+MANIFEST = '<manifest><application android:label="Demo"\n    android:icon="@mipmap/app_icon"></application></manifest>'
+
+
+def write_bytes(root: Path, files: dict[str, bytes]) -> None:
+    for name, content in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+
+
+@pytest.mark.parametrize(
+    ("command", "module"),
+    [
+        ("./gradlew app:dependencies --configuration debugRuntimeClasspath", "app"),
+        ("./gradlew :apps:phone:dependencies", "apps/phone"),
+        ("./gradlew dependencies --configuration debugRuntimeClasspath", ""),
+    ],
+)
+def test_gradle_module(command, module):
+    assert gs.gradle_module(command) == module
+
+
+def test_app_icon_prefers_the_main_source_set_and_a_sharp_density(tmp_path):
+    make_project(tmp_path, {**ANDROID_PROJECT, "app/src/main/AndroidManifest.xml": MANIFEST})
+    write_bytes(
+        tmp_path / "app/src",
+        {
+            "main/res/mipmap-hdpi/app_icon.png": PNG + b"hdpi",
+            "main/res/mipmap-xxhdpi-v4/app_icon.webp": WEBP,
+            "main/res/mipmap-xxxhdpi/ic_launcher.png": PNG,
+            "free/res/mipmap-xxhdpi/app_icon.png": PNG + b"free",
+        },
+    )
+    icon = gs.app_icon(tmp_path, "./gradlew app:dependencies")
+    assert icon == "data:image/webp;base64," + gs.base64.b64encode(WEBP).decode()
+
+
+def test_app_icon_finds_the_app_module_when_the_gradle_path_differs_from_its_directory(tmp_path):
+    # Like Signal-Android, whose :Signal-Android project lives in app/.
+    make_project(
+        tmp_path,
+        {
+            "settings.gradle.kts": 'include(":Signal-Android", ":lib")\n',
+            "app/build.gradle.kts": 'plugins { id("com.android.application") }\n',
+            "app/src/main/AndroidManifest.xml": "<manifest><application/></manifest>",
+            "lib/build.gradle.kts": 'plugins { id("com.android.library") }\n',
+            "lib/src/main/AndroidManifest.xml": MANIFEST,
+        },
+    )
+    write_bytes(tmp_path, {"app/src/main/res/mipmap-xhdpi/ic_launcher.png": PNG, "lib/src/main/res/mipmap-xxhdpi/app_icon.png": PNG + b"lib"})
+    icon = gs.app_icon(tmp_path, "./gradlew :Signal-Android:dependencies")
+    assert icon == "data:image/png;base64," + gs.base64.b64encode(PNG).decode()
+
+
+@pytest.mark.parametrize(
+    "files",
+    [
+        {"app/src/main/res/mipmap-anydpi-v26/app_icon.xml": b"<adaptive-icon/>"},
+        {"app/src/main/res/mipmap-xxhdpi/app_icon.png": b"<svg onload=alert(1)>"},
+        {"app/src/main/res/mipmap-xxhdpi/app_icon.png": PNG + b"\0" * gs.MAX_ICON_BYTES},
+    ],
+    ids=["xml only", "not an image", "too large"],
+)
+def test_app_icon_skips_what_cannot_be_embedded(tmp_path, files):
+    make_project(tmp_path, {**ANDROID_PROJECT, "app/src/main/AndroidManifest.xml": MANIFEST})
+    write_bytes(tmp_path, files)
+    assert gs.app_icon(tmp_path, "./gradlew app:dependencies") is None
+
+
+def test_app_icon_ignores_files_outside_the_project(tmp_path):
+    project = make_project(tmp_path / "project", {**ANDROID_PROJECT, "app/src/main/AndroidManifest.xml": MANIFEST})
+    write_bytes(tmp_path, {"outside.png": PNG})
+    (project / "app/src/main/res/mipmap-xxhdpi").mkdir(parents=True)
+    (project / "app/src/main/res/mipmap-xxhdpi/app_icon.png").symlink_to(tmp_path / "outside.png")
+    assert gs.app_icon(project, "./gradlew app:dependencies") is None
+
+
+def test_sample_meta(tmp_path):
+    make_project(tmp_path, {**ANDROID_PROJECT, "app/src/main/AndroidManifest.xml": MANIFEST})
+    write_bytes(tmp_path, {"app/src/main/res/mipmap-xxhdpi/app_icon.png": PNG})
+    meta = gs.sample_meta("https://github.com/owner/demo.git", "b" * 40, tmp_path, "./gradlew app:dependencies")
+    assert meta["repository"] == "https://github.com/owner/demo"
+    assert meta["commit"] == "b" * 40
+    assert meta["icon"].startswith("data:image/png;base64,")
+    assert gs.sample_meta() == {}
+    with pytest.raises(SystemExit):
+        gs.sample_meta(commit="main")
 
 
 @pytest.fixture

@@ -1,4 +1,8 @@
 {
+  "meta": {
+    "repository": "https://github.com/signalapp/Signal-Android",
+    "commit": "b92917acdb067e83a9a79122d7496d66c5880b71"
+  },
   "Signal-Android": [
     {
       "module": "org.jetbrains.kotlin:kotlin-stdlib",

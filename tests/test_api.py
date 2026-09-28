@@ -36,6 +36,22 @@ def test_list_samples():
     samples = response.json()
     assert {s["filename"] for s in samples} == {p.name for p in SAMPLE_DIR.glob("*.json")}
     assert all(s["entries"] > 0 and s["modules"] > 0 for s in samples)
+    signal = next(s for s in samples if s["name"] == "signal-android")
+    assert signal["repository"] == "https://github.com/signalapp/Signal-Android"
+    assert signal["commit"] == "b92917acdb067e83a9a79122d7496d66c5880b71"
+
+
+def test_sample_meta_drops_malformed_values():
+    from app.main import _sample_meta
+
+    meta = {
+        "repository": "javascript:alert(1)",
+        "commit": "main",
+        "icon": "data:image/svg+xml;base64,PHN2Zz4=",
+    }
+    assert _sample_meta({"meta": meta}) == {"repository": None, "commit": None, "icon": None}
+    assert _sample_meta({"meta": {"icon": "data:image/png;base64,iVBORw0KGgo="}})["icon"] == "data:image/png;base64,iVBORw0KGgo="
+    assert _sample_meta({}) == {"repository": None, "commit": None, "icon": None}
 
 
 def test_history_endpoints_are_gone():

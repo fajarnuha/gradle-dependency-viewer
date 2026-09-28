@@ -1,4 +1,7 @@
 {
+  "meta": {
+    "repository": "https://github.com/home-assistant/android"
+  },
   "app": [
     {
       "module": "androidx.databinding:viewbinding",

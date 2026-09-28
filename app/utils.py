@@ -78,7 +78,7 @@ def get_root_key_and_nodes(dependency_data):
         return 'root', dependency_data['root']
     
     # Exclude known non-root keys
-    excluded_keys = {'raw_txt', 'metadata', 'nodes', 'edges'}
+    excluded_keys = {'raw_txt', 'meta', 'metadata', 'nodes', 'edges'}
     for key, value in dependency_data.items():
         if key not in excluded_keys and isinstance(value, list):
             return key, value

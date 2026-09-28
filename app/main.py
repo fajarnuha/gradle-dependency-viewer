@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -24,6 +25,10 @@ from .utils import get_root_key_and_nodes
 APP_ROOT = Path(__file__).resolve().parent
 PARSE_SCRIPT = APP_ROOT / "parse.py"
 SAMPLE_DIR = APP_ROOT / "static" / "sample"
+# What a sample's "meta" entry may hold (written by jenkins/generate_sample.py); anything else is dropped.
+SAMPLE_REPOSITORY = re.compile(r"^https://github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+$")
+SAMPLE_COMMIT = re.compile(r"^[0-9a-f]{40}$")
+SAMPLE_ICON = re.compile(r"^data:image/(?:png|webp);base64,[A-Za-z0-9+/]+=*$")
 
 # The app is stateless: it never writes dependency data to disk. Pages are rendered either from
 # the pre-compiled samples in SAMPLE_DIR or from data the browser sends along with the request
@@ -91,9 +96,19 @@ def _to_graph(dependency_data: dict) -> dict:
     return graph or {"nodes": [], "edges": [], "metadata": {"total_nodes": 0, "total_edges": 0}}
 
 
+def _sample_meta(data: dict) -> dict:
+    """Source repository, commit and app icon of a sample, each None when missing or malformed."""
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    patterns = {"repository": SAMPLE_REPOSITORY, "commit": SAMPLE_COMMIT, "icon": SAMPLE_ICON}
+    return {
+        key: value if isinstance(value := meta.get(key), str) and pattern.match(value) else None
+        for key, pattern in patterns.items()
+    }
+
+
 @lru_cache(maxsize=32)
 def _sample_summary(filename: str, mtime: float) -> dict:
-    """Entry and unique-module counts of a sample (cached per file modification time)."""
+    """Entry and unique-module counts and the meta entry of a sample (cached per file modification time)."""
     data = _load_sample(filename)
     _, root_nodes = get_root_key_and_nodes(data)
     modules = set()
@@ -104,7 +119,7 @@ def _sample_summary(filename: str, mtime: float) -> dict:
         entries += 1
         modules.add(node.get("module", ""))
         stack.extend(node.get("children") or [])
-    return {"entries": entries, "modules": len(modules)}
+    return {"entries": entries, "modules": len(modules), **_sample_meta(data)}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -145,8 +160,9 @@ async def tree_viewer(
     if sample:
         try:
             tree_data = _apply_filters(_load_sample(sample), filter, project_only)
-            # The raw TXT is not used by the tree viewer; don't inline it into the page.
+            # The raw TXT and the meta entry are not used by the tree viewer; don't inline them into the page.
             tree_data.pop("raw_txt", None)
+            tree_data.pop("meta", None)
         except HTTPException as e:
             print(f"Sample not available: {e.detail}")
         except Exception as e:
@@ -295,6 +311,7 @@ async def tree(request: ViewRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid dependency data: {e}")
     tree_data.pop("raw_txt", None)
+    tree_data.pop("meta", None)
     return tree_data
 
 

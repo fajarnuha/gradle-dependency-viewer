@@ -276,6 +276,19 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* The app's launcher icon, where the sample has one; it replaces the initial. */
+.project-icon--image,
+.project-item[aria-pressed="true"] .project-icon--image {
+  background: none;
+}
+
+.project-icon img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
 .project-meta {
   flex: 1;
   min-width: 0;
@@ -289,6 +302,16 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.project-commit {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.project-item[aria-pressed="true"] .project-commit {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .project-chevron {
@@ -397,10 +420,26 @@ body {
   color: var(--success);
 }
 
+.ready-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .ready-header h2 {
   margin: 0;
   font-size: 1.5rem;
   overflow-wrap: anywhere;
+}
+
+.app-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .source-badge {
@@ -417,6 +456,47 @@ body {
 .source-badge.upload {
   background: var(--primary-soft);
   color: var(--primary);
+}
+
+/* Commit and GitHub link of a pre-compiled sample */
+.sample-source {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+}
+
+.sample-commit {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.sample-commit:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.sample-repo {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.sample-repo:hover {
+  color: var(--text-main);
+}
+
+.sample-repo svg {
+  fill: currentColor;
+}
+
+.sample-commit:focus-visible,
+.sample-repo:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 /* Collapsed TXT / JSON previews */

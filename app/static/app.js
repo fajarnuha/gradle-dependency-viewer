@@ -18,13 +18,17 @@ const openTreeBtn = document.getElementById('open-tree-btn');
 const enlistBtn = document.getElementById('enlist-btn');
 const currentFileName = document.getElementById('current-file-name');
 const sourceBadge = document.getElementById('source-badge');
+const appIcon = document.getElementById('app-icon');
+const sampleSource = document.getElementById('sample-source');
+const sampleCommit = document.getElementById('sample-commit');
+const sampleRepo = document.getElementById('sample-repo');
 const txtPanel = document.getElementById('txt-panel');
 const sampleList = document.getElementById('sample-list');
 const clearBtn = document.getElementById('clear-btn');
 const clearDialog = document.getElementById('clear-dialog');
 
 let samples = [];
-// { kind: 'sample', filename, name, data } or { kind: 'upload', name, data, txt }
+// { kind: 'sample', filename, name, data, repository, commit, icon } or { kind: 'upload', name, data, txt }
 let current = null;
 
 function setState(state) {
@@ -75,9 +79,14 @@ function removeSession(key) {
   }
 }
 
-function withoutRawTxt(data) {
-  const { raw_txt, ...rest } = data || {};
+// The dependency tree alone, without the raw TXT and a sample's meta entry.
+function dependenciesOnly(data) {
+  const { raw_txt, meta, ...rest } = data || {};
   return rest;
+}
+
+function shortSha(commit) {
+  return commit.slice(0, 7);
 }
 
 function preview(text) {
@@ -120,14 +129,30 @@ function renderSampleList() {
       <span class="project-icon" aria-hidden="true"></span>
       <span class="project-meta">
         <span class="project-name"></span>
+        <span class="project-commit"></span>
       </span>
       <svg class="project-chevron" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor"
         stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <polyline points="9 18 15 12 9 6"></polyline>
       </svg>
     `;
-    button.querySelector('.project-icon').textContent = sample.name.charAt(0);
+    const icon = button.querySelector('.project-icon');
+    if (sample.icon) {
+      const image = document.createElement('img');
+      image.src = sample.icon;
+      image.alt = '';
+      icon.classList.add('project-icon--image');
+      icon.append(image);
+    } else {
+      icon.textContent = sample.name.charAt(0);
+    }
     button.querySelector('.project-name').textContent = sample.name;
+    const commit = button.querySelector('.project-commit');
+    if (sample.commit) {
+      commit.textContent = shortSha(sample.commit);
+    } else {
+      commit.remove();
+    }
     button.addEventListener('click', () => openSample(sample));
     item.append(button);
     sampleList.append(item);
@@ -151,7 +176,8 @@ async function openSample(sample, { reveal = true } = {}) {
     const response = await fetch(sample.path);
     if (!response.ok) throw new Error(`Failed to load ${sample.name}.`);
     const data = await response.json();
-    showResult({ kind: 'sample', filename: sample.filename, name: sample.name, data });
+    const { repository, commit, icon } = sample;
+    showResult({ kind: 'sample', filename: sample.filename, name: sample.name, data, repository, commit, icon });
     writeSession(CURRENT_KEY, { kind: 'sample', filename: sample.filename });
     if (reveal) revealResult();
   } catch (error) {
@@ -219,14 +245,34 @@ function showResult(entry) {
     ? 'Pre-compiled open source project'
     : 'Your upload · kept in this browser tab only';
   sourceBadge.classList.toggle('upload', entry.kind === 'upload');
+  showSampleSource(entry);
 
-  jsonPreview.textContent = preview(JSON.stringify(withoutRawTxt(entry.data), null, 2));
+  jsonPreview.textContent = preview(JSON.stringify(dependenciesOnly(entry.data), null, 2));
   const txt = entry.txt || '';
   txtPreview.textContent = preview(txt);
   txtPanel.classList.toggle('hidden', !txt);
 
   updateActiveSample();
   setState('ready');
+}
+
+// App icon, commit and GitHub link of a pre-compiled sample, where its meta entry has them.
+function showSampleSource(entry) {
+  appIcon.classList.toggle('hidden', !entry.icon);
+  if (entry.icon) {
+    appIcon.src = entry.icon;
+  } else {
+    appIcon.removeAttribute('src');
+  }
+
+  sampleSource.classList.toggle('hidden', !entry.repository);
+  sampleCommit.classList.toggle('hidden', !entry.commit);
+  if (!entry.repository) return;
+  sampleRepo.href = entry.repository;
+  if (entry.commit) {
+    sampleCommit.href = `${entry.repository}/tree/${entry.commit}`;
+    sampleCommit.textContent = `commit ${shortSha(entry.commit)}`;
+  }
 }
 
 // The result card sits below the inputs, so bring it into view after a user action.
@@ -286,7 +332,7 @@ enlistBtn.addEventListener('click', async () => {
     const response = await fetch('/api/enlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: withoutRawTxt(current.data) })
+      body: JSON.stringify({ data: dependenciesOnly(current.data) })
     });
     if (!response.ok) throw new Error('Failed to enlist dependencies.');
 
