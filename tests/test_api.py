@@ -80,7 +80,11 @@ def test_graph_api_converts_and_filters():
     assert len(graph["nodes"]) > 100
     assert any(n["id"] == "root:" for n in graph["nodes"])
 
-    filtered = client.post("/api/graph", json={"data": _sample_data(), "filter": "okhttp"}).json()
+    # Filter by a leaf deep in the tree, which any sample has (samples come and go, so no fixed module).
+    node = next(v for k, v in _sample_data().items() if isinstance(v, list))[0]
+    while node["children"]:
+        node = node["children"][0]
+    filtered = client.post("/api/graph", json={"data": _sample_data(), "filter": node["module"]}).json()
     assert 0 < len(filtered["nodes"]) < len(graph["nodes"])
 
     nothing = client.post("/api/graph", json={"data": _sample_data(), "filter": "no-such-dependency"}).json()
