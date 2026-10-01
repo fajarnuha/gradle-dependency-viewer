@@ -1,5 +1,5 @@
 """Helpers for jenkins/generate-sample.Jenkinsfile, which turns a public GitHub Android project into a
-pre-compiled sample in app/static/sample/. Standard library only, so any agent with python3 runs it.
+pre-compiled sample in app/static/sample/. Python standard library for orchestration, Kotlin CLI for parsing.
 
 Values meant for the pipeline are printed to stdout as KEY=value lines; logs go to stderr.
 
@@ -34,10 +34,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = REPO_ROOT / "app"
 SAMPLE_DIR = APP_DIR / "static" / "sample"
 
-# app/parse.py is a script that imports its sibling module as `utils`.
-sys.path.insert(0, str(APP_DIR))
-import parse  # noqa: E402
-from utils import get_root_key_and_nodes  # noqa: E402
+VIEWER_CLI = REPO_ROOT / "server/build/install/gradle-dependency-viewer/bin/gradle-dependency-viewer"
+
+
+def kotlin_cli(command: str, path: Path) -> dict:
+    cli = Path(os.environ.get("VIEWER_CLI", str(VIEWER_CLI)))
+    if not cli.is_file():
+        fail("Kotlin CLI not built. Run ./gradlew :server:installDist first, or set VIEWER_CLI.")
+    result = subprocess.run([str(cli), command, str(path.resolve())], capture_output=True, text=True)
+    if result.returncode:
+        fail(f"Kotlin {command} failed: {result.stderr.strip()}")
+    return json.loads(result.stdout)
 
 GITHUB_URL = re.compile(r"^https://github\.com/([A-Za-z0-9][A-Za-z0-9-]{0,38})/([A-Za-z0-9._-]{1,100}?)(?:\.git)?/?$")
 COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -414,8 +421,8 @@ def convert(
 ) -> dict:
     # Decoded from bytes so raw_txt keeps the original line endings.
     text = txt_path.read_bytes().decode("utf-8", errors="replace")
-    lines = text.splitlines()
-    nodes = parse.parse_dependencies(lines)
+    parsed = kotlin_cli("parse", txt_path)
+    nodes = next(iter(parsed.values()))
     if not nodes:
         fail(f"No dependencies found in {txt_path}; check the Gradle output above.")
 
@@ -428,7 +435,7 @@ def convert(
         old.unlink()
 
     path = out_dir / f"{slug}_{(now or datetime.now()):%d%H%M}.json"
-    data = {**({"meta": meta} if meta else {}), parse.extract_project_name(lines): nodes, "raw_txt": text}
+    data = {**({"meta": meta} if meta else {}), **parsed, "raw_txt": text}
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     log(f"Wrote {path} ({len(nodes)} top-level dependencies)")
     return {"SAMPLE_FILE": path.name, "REPLACED_SAMPLES": ",".join(p.name for p in replaced)}
@@ -481,16 +488,11 @@ def check_access(repo: str) -> dict:
 
 def summarize(data: dict) -> tuple[int, int]:
     """Entry and unique-module counts, as shown on the home page."""
-    _, root_nodes = get_root_key_and_nodes(data)
-    modules = set()
-    entries = 0
-    stack = list(root_nodes or [])
-    while stack:
-        node = stack.pop()
-        entries += 1
-        modules.add(node.get("module", ""))
-        stack.extend(node.get("children") or [])
-    return entries, len(modules)
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "data.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        summary = kotlin_cli("summary", path)
+    return summary["entries"], summary["modules"]
 
 
 def open_pull_request(args) -> dict:

@@ -111,3 +111,10 @@ dmypy.json
 .DS_Store
 
 app/static/data/
+
+# Kotlin / Gradle
+.gradle/
+.gradle-user-home/
+.kotlin/
+**/build/
+.playwright-cli/

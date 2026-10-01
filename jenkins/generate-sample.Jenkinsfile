@@ -3,7 +3,7 @@
 //
 // Job setup: a Pipeline job ("Pipeline script from SCM") on this repository with the script path
 // jenkins/generate-sample.Jenkinsfile. It runs on the agent labelled "self" (an x86 machine), which
-// needs git, python3, the Antigravity CLI (AGY, only when GRADLE_COMMAND is blank) and a JDK (17 or newer; the Android SDK is optional, since dumping
+// needs git, python3, the Antigravity CLI (AGY, only when GRADLE_COMMAND is blank) and a JDK (21 or newer; the Android SDK is optional, since dumping
 // dependencies needs none with recent Android Gradle plugins). Gradle runs directly on the agent, no
 // Docker. GITHUB_CREDENTIALS_ID names a "Username with password" credential whose password is a
 // GitHub token that can push branches to and open pull requests on VIEWER_REPO.
@@ -52,6 +52,11 @@ pipeline {
     }
 
     stages {
+        stage('Build Kotlin parser') {
+            steps {
+                sh './gradlew --no-daemon :server:installDist'
+            }
+        }
         // Fails in seconds, instead of after the Gradle run, when the credential cannot push.
         stage('Check GitHub access') {
             when {

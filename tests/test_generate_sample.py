@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.main import SAMPLE_DIR
+from .conftest import SAMPLE_DIR
 
 SCRIPT = Path(__file__).resolve().parent.parent / "jenkins" / "generate_sample.py"
 spec = importlib.util.spec_from_file_location("generate_sample", SCRIPT)

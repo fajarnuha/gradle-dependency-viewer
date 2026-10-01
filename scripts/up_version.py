@@ -5,23 +5,22 @@ from pathlib import Path
 
 def run_command(command):
     try:
-        subprocess.run(command, check=True, shell=True)
+        subprocess.run(command, check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {command}")
         sys.exit(1)
 
 def main():
-    pyproject_path = Path("pyproject.toml")
-    if not pyproject_path.exists():
-        print("pyproject.toml not found.")
+    version_path = Path("gradle.properties")
+    if not version_path.exists():
+        print("gradle.properties not found.")
         sys.exit(1)
 
-    content = pyproject_path.read_text(encoding="utf-8")
+    content = version_path.read_text(encoding="utf-8")
     
-    # Regex to find version = "x.y.z"
-    match = re.search(r'^version = "(\d+)\.(\d+)\.(\d+)"', content, re.MULTILINE)
+    match = re.search(r'^version=(\d+)\.(\d+)\.(\d+)$', content, re.MULTILINE)
     if not match:
-        print("Could not find version in pyproject.toml")
+        print("Could not find version in gradle.properties")
         sys.exit(1)
 
     major, minor, patch = map(int, match.groups())
@@ -29,19 +28,19 @@ def main():
     # Increment patch version (default behavior)
     new_version = f"{major}.{minor}.{patch + 1}"
     
-    new_content = content.replace(f'version = "{major}.{minor}.{patch}"', f'version = "{new_version}"')
-    pyproject_path.write_text(new_content, encoding="utf-8")
+    new_content = re.sub(r'^version=\d+\.\d+\.\d+$', f'version={new_version}', content, flags=re.MULTILINE)
+    version_path.write_text(new_content, encoding="utf-8")
     
     print(f"Bumped version from {major}.{minor}.{patch} to {new_version}")
 
     # Git operations
-    run_command(f'git add pyproject.toml')
-    run_command(f'git commit -m "Bump version to v{new_version}"')
-    run_command(f'git tag v{new_version}')
+    run_command(['git', 'add', 'gradle.properties'])
+    run_command(['git', 'commit', '-m', f'Bump version to v{new_version}'])
+    run_command(['git', 'tag', f'v{new_version}'])
     
     print("Pushing to remote...")
-    run_command('git push')
-    run_command('git push --tags')
+    run_command(['git', 'push'])
+    run_command(['git', 'push', 'origin', f'v{new_version}'])
     
     print("Done!")
 

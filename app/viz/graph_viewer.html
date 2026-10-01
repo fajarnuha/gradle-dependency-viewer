@@ -1041,7 +1041,7 @@
                 </a>
                 <div>
                     <h1>Dependency Graph</h1>
-                    <p class="file-name" id="file-name">{{ file_name or 'Sample data' }}</p>
+                    <p class="file-name" id="file-name">__FILE_NAME__</p>
                 </div>
             </header>
 
@@ -2287,8 +2287,8 @@
             const hasFilter = new URLSearchParams(window.location.search).has('filter')
                 || new URLSearchParams(window.location.search).get('project_only') === 'true';
 
-            // Priority 1: Injected data from server (a pre-compiled sample, converted by convert_to_graph.py)
-            const serverGraphData = {{ graph_data | tojson | safe }};
+            // Priority 1: Injected data from server (a pre-compiled sample, converted by the Kotlin core)
+            const serverGraphData = __VIEW_DATA__;
 
             if (serverGraphData && serverGraphData.nodes && serverGraphData.nodes.length > 0) {
                 validateAndRender(serverGraphData);

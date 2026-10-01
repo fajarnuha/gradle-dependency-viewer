@@ -1,28 +1,10 @@
 import json
-import multiprocessing
-import time
 
-import pytest
-import uvicorn
 from playwright.sync_api import Page, expect
 
-from app.main import APP_ROOT, SAMPLE_DIR, app
+from .conftest import APP_ROOT, SAMPLE_DIR
 
-PORT = 8003
-BASE_URL = f"http://localhost:{PORT}"
-
-
-def run_server():
-    uvicorn.run(app, host="127.0.0.1", port=PORT)
-
-
-@pytest.fixture(scope="module", autouse=True)
-def server():
-    proc = multiprocessing.Process(target=run_server, daemon=True)
-    proc.start()
-    time.sleep(3)
-    yield
-    proc.terminate()
+BASE_URL = "http://127.0.0.1:8003"
 
 
 def _app_files():

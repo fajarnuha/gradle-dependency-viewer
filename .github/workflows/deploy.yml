@@ -20,6 +20,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test release
+        run: ./gradlew --no-daemon :core:jvmTest :server:test
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -66,6 +76,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           envs: GITHUB_TOKEN,USERNAME,REGISTRY
           script: |
+            set -eu
             # Convert repository name to lowercase for Docker image
             IMAGE_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
 
@@ -89,8 +100,22 @@ jobs:
             docker run -d \
               --name gradle-dependency-viewer \
               --restart unless-stopped \
+              -e PORT=8000 \
               -p 8000:8000 \
               "$FULL_IMAGE"
+
+            # Fail deployment if the new process never becomes ready.
+            for attempt in $(seq 1 30); do
+              STATUS=$(docker inspect --format '{{.State.Health.Status}}' gradle-dependency-viewer)
+              if [ "$STATUS" = healthy ]; then
+                break
+              fi
+              sleep 2
+            done
+            if [ "$STATUS" != healthy ]; then
+              docker logs gradle-dependency-viewer
+              exit 1
+            fi
 
             # Optional: Prune unused images to save space
             docker image prune -f
