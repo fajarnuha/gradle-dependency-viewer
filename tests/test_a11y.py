@@ -1,24 +1,8 @@
 
-import pytest
 from playwright.sync_api import Page, expect
-import multiprocessing
-import time
-import uvicorn
-from app.main import app
 
-PORT = 8002
-BASE_URL = f"http://localhost:{PORT}"
+BASE_URL = "http://127.0.0.1:8003"
 
-def run_server():
-    uvicorn.run(app, host="127.0.0.1", port=PORT)
-
-@pytest.fixture(scope="module", autouse=True)
-def server():
-    proc = multiprocessing.Process(target=run_server, daemon=True)
-    proc.start()
-    time.sleep(3)
-    yield
-    proc.terminate()
 
 def test_project_list_accessibility(page: Page):
     page.goto(BASE_URL)

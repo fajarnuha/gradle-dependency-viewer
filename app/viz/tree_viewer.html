@@ -1008,7 +1008,7 @@
                 </a>
                 <div>
                     <h1>Dependency Tree</h1>
-                    <p class="file-name" id="file-name">{{ file_name or 'Sample data' }}</p>
+                    <p class="file-name" id="file-name">__FILE_NAME__</p>
                 </div>
             </header>
 
@@ -2234,8 +2234,8 @@
         }
 
         async function loadInitialData() {
-            // Check for injected data from server (Jinja2)
-            const serverTreeData = {{ tree_data | tojson | safe }};
+            // Check for injected sample data from the server
+            const serverTreeData = __VIEW_DATA__;
 
             // Wait (briefly) for the web fonts so that label measurements are accurate.
             if (document.fonts && document.fonts.ready) {

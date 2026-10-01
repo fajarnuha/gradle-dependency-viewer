@@ -1,28 +1,9 @@
 
-import pytest
-import multiprocessing
-import time
-import uvicorn
-import os
 from pathlib import Path
-from playwright.sync_api import Page, expect
-from app.main import app
+from playwright.sync_api import Page
 
-# Use a different port to avoid conflicts
-PORT = 8001
-BASE_URL = f"http://localhost:{PORT}"
+BASE_URL = "http://127.0.0.1:8003"
 
-def run_server():
-    uvicorn.run(app, host="127.0.0.1", port=PORT)
-
-@pytest.fixture(scope="module", autouse=True)
-def server():
-    proc = multiprocessing.Process(target=run_server, daemon=True)
-    proc.start()
-    # Give the server a moment to start
-    time.sleep(3)
-    yield
-    proc.terminate()
 
 def test_generate_screenshots(page: Page):
     # Ensure screenshot directory exists

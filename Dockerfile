@@ -1,39 +1,20 @@
-# Use a Python image with uv pre-installed
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
-
-# Enable bytecode compilation
-ENV UV_COMPILE_BYTECODE=1
-
-# Copy from the cache instead of linking since it's a separate volume
-ENV UV_LINK_MODE=copy
-
-# Install the project's dependencies from the lockfile and settings
+FROM eclipse-temurin:21-jdk-jammy AS builder
 WORKDIR /app
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
+COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties ./
+COPY gradle ./gradle
+COPY core ./core
+COPY server ./server
+COPY app ./app
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew --no-daemon :core:jvmTest :server:test :server:installDist
 
-# Then, add the rest of the project source code and install it
-# Installing separately from its dependencies allows optimal container networking
-ADD . /app
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
-
-# Final image
-FROM python:3.12-slim-bookworm
-
-# Copy the environment, but not the source code
-COPY --from=builder /app /app
-
-# Place executables in the environment at the front of the path
-ENV PATH="/app/.venv/bin:$PATH"
-
-# Set the working directory
+FROM eclipse-temurin:21-jre-jammy
+RUN groupadd --gid 10001 viewer && useradd --uid 10001 --gid viewer --no-create-home viewer
 WORKDIR /app
-
-# Expose the port the app runs on
+COPY --from=builder /app/server/build/install/gradle-dependency-viewer/ ./
+ENV PORT=8000 JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+USER viewer
 EXPOSE 8000
-
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl --fail --silent http://127.0.0.1:${PORT}/healthz || exit 1
+ENTRYPOINT ["/app/bin/gradle-dependency-viewer"]

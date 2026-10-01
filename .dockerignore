@@ -1,0 +1,16 @@
+.git
+.gradle
+.gradle-user-home
+.kotlin
+**/build
+.venv
+**/__pycache__
+.pytest_cache
+.playwright-cli
+.env
+.DS_Store
+kotlin-js-store
+tests
+screenshot
+jenkins
+scripts
