@@ -8,15 +8,16 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 fun filterDependencies(data: JsonObject, filter: String? = null, projectOnly: Boolean = false): JsonObject {
+    data.graphReportOrNull()?.let { return it.filtered(filter, projectOnly).toJson() }
     val key = rootKey(data) ?: return data
     val roots = nodes(data[key])
-    val keywords = filter.orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
+    val keywords = dependencyKeywords(filter)
     if (!projectOnly && keywords.isEmpty()) return data
     val kept = mutableSetOf<String>()
     fun findMatches(items: List<JsonObject>, ancestors: List<JsonObject>) {
         for (node in items) {
             val path = ancestors + node
-            if (keywords.any { node.text("module").contains(it, ignoreCase = true) }) {
+            if (matchesDependency(node.text("module"), keywords)) {
                 (path + node.children()).forEach { kept.add(it.text("full")) }
             }
             findMatches(node.children(), path)
@@ -25,7 +26,7 @@ fun filterDependencies(data: JsonObject, filter: String? = null, projectOnly: Bo
     if (!projectOnly && keywords.isNotEmpty()) findMatches(roots, emptyList())
     fun rebuild(items: List<JsonObject>): JsonArray = JsonArray(items.mapNotNull { node ->
         val keep = when {
-            projectOnly -> node.text("module").startsWith("project ")
+            projectOnly -> isProjectModule(node.text("module"))
             keywords.isNotEmpty() -> node.text("full") in kept
             else -> true
         }
@@ -34,9 +35,11 @@ fun filterDependencies(data: JsonObject, filter: String? = null, projectOnly: Bo
     return JsonObject(data + (key to rebuild(roots)))
 }
 
-fun treeView(data: JsonObject): JsonObject = JsonObject(data - setOf("raw_txt", "meta"))
+fun treeView(data: JsonObject): JsonObject =
+    data.graphReportOrNull()?.tree() ?: JsonObject(data - setOf("raw_txt", "meta"))
 
 fun enlistDependencies(data: JsonObject): List<String> {
+    data.graphReportOrNull()?.let { return it.coordinates() }
     val dependencies = mutableSetOf<String>()
     fun visit(items: List<JsonObject>) {
         for (node in items) {
@@ -56,6 +59,7 @@ fun enlistYaml(data: JsonObject): String {
 }
 
 fun sampleSummary(data: JsonObject): JsonObject {
+    data.graphReportOrNull()?.let { return sampleSummary(it.tree()) }
     var entries = 0
     val modules = mutableSetOf<String>()
     val stack = nodes(rootKey(data)?.let { data[it] }).toMutableList()

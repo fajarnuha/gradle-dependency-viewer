@@ -1,6 +1,6 @@
 # Gradle Dependency Viewer
 
-Visualize Gradle dependency reports as interactive graphs and trees. Upload the output of the Gradle `dependencies` task saved as a text file.
+Visualize Gradle dependency reports as interactive graphs and trees. Upload a JSON graph exported by the Gradle plugin or a text report from the Gradle `dependencies` task.
 
 The backend uses Kotlin and Ktor. The parser, filters, graph conversion, summaries and dependency export live in the `core` Kotlin Multiplatform module, using the Kotlin standard library and `kotlinx.serialization`. The frontend uses static JavaScript, CSS and D3 7.9.0.
 
@@ -28,6 +28,45 @@ Access the UI at [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 ### 1. Generate a dependency report
 
+#### Export JSON with the Gradle plugin
+
+Add this repository as an included plugin build in your project's `settings.gradle.kts`.
+Use the path to your checkout:
+
+```kotlin
+pluginManagement {
+    includeBuild("../gradle-dependency-viewer")
+}
+```
+
+Apply `id("com.fajarnuha.dependency-graph")` in the module you want to inspect.
+The plugin uses the Gradle 8.14.3 API and requires JDK 17 or later.
+
+```bash
+./gradlew :app:exportDependencyGraph -PdependencyGraphConfiguration=debugRuntimeClasspath
+```
+
+Upload `app/build/reports/dependency-graph/debugRuntimeClasspath.json`. The task defaults to
+`runtimeClasspath` when you omit the property. It resolves one configuration without compiling
+the app. If a dependency fails to resolve, the task fails and leaves any previous export intact.
+
+The version 1 JSON includes the project path, configuration, root ID, selected variant nodes,
+and dependency edges with their requested selectors and constraint flags. The node IDs are opaque
+and local to the report.
+
+To try the included Android sample, install Android SDK Platform 36, then run this command
+from the viewer repository root:
+
+```bash
+./gradlew -p samples/android :app:exportDependencyGraph -PdependencyGraphConfiguration=debugRuntimeClasspath
+```
+
+Upload `samples/android/app/build/reports/dependency-graph/debugRuntimeClasspath.json`.
+The graph shows that `:app` depends on `:shared` directly and through `:feature`.
+You can also build the demo APK with `./gradlew -p samples/android :app:assembleDebug`.
+
+#### Export a text report
+
 Run the following command in your Gradle project root to generate a text file of your dependencies.
 
 **Note:** The configuration name (e.g., `debugRuntimeClasspath`) varies depending on your project's build variants and flavors. Check your available configurations by running `./gradlew app:dependencies` without arguments first to decide which one you want to visualize.
@@ -39,7 +78,7 @@ Run the following command in your Gradle project root to generate a text file of
 ### 2. Upload and visualize
 
 1. Open the web app in your browser.
-2. Drag and drop or click to upload your `my_app.txt`.
+2. Drag and drop or click to upload the generated `.json` or `.txt` file.
 3. Once parsing finishes, choose **Graph Viewer** or **Tree Viewer** from the result card.
 
 ### 3. Explore dependencies
@@ -57,6 +96,8 @@ Run the following command in your Gradle project root to generate a text file of
 ### Project structure
 
 - `core/`: Kotlin Multiplatform logic and shared tests, targeting JVM and JavaScript.
+- `gradle-plugin/`: Gradle task for exporting resolved dependency graphs.
+- `samples/android/`: Independent Android build that exercises the exporter.
 - `server/`: Ktor server, JVM file and charset handling, CLI and server tests.
 - `app/`: Static frontend, HTML templates and bundled JSON samples, packaged as server resources.
 - `tests/`: Python tests for Chromium browser flows, accessibility, screenshots, Jenkins automation and the release script. These run against the Kotlin distribution in CI.
@@ -65,7 +106,7 @@ Run the following command in your Gradle project root to generate a text file of
 ### Build and test
 
 ```bash
-./gradlew :core:allTests :server:test :server:installDist
+./gradlew :core:allTests :server:test :server:installDist :gradle-plugin:test
 ```
 
 To run the browser and automation tests after building the distribution:

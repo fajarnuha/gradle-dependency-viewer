@@ -2260,11 +2260,11 @@
                         document.getElementById('file-name').textContent = uploaded.name;
                         initialJsonData = uploaded.data;
                     } else {
-                        showBanner('Your upload is no longer available in this tab. Please upload the TXT again.');
+                        showBanner('Your upload is no longer available in this tab. Please upload the dependency file again.');
                     }
                 } catch (error) {
                     console.error('Failed to process the uploaded data:', error);
-                    showBanner('Failed to process your upload. Please upload the TXT again.');
+                    showBanner('Failed to process your upload. Please upload the dependency file again.');
                 }
             } else {
                 showBanner();

@@ -3,6 +3,7 @@ WORKDIR /app
 COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle ./gradle
 COPY core ./core
+COPY gradle-plugin/build.gradle.kts ./gradle-plugin/build.gradle.kts
 COPY server ./server
 COPY app ./app
 RUN --mount=type=cache,target=/root/.gradle \

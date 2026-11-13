@@ -85,3 +85,38 @@ def test_viewer_without_upload_shows_hint(page: Page):
     page.goto(f"{BASE_URL}/viz/graph_viewer.html?source=upload")
     expect(page.locator("#no-data")).to_be_visible()
     expect(page.locator("#no-data")).to_contain_text("no longer available")
+
+
+def test_gradle_graph_upload_opens_both_viewers_and_downloads_yaml(page: Page):
+    data = {
+        "schemaVersion": 1,
+        "projectPath": ":app",
+        "configuration": "debugRuntimeClasspath",
+        "rootId": "app",
+        "nodes": [
+            {"id": "app", "module": "project :app", "version": "", "resolution": "", "full": "project :app"},
+            {"id": "lib", "module": "org.example:lib", "version": "2", "resolution": "", "full": "org.example:lib:2"},
+        ],
+        "edges": [{"source": "app", "target": "lib", "requested": "org.example:lib:1", "constraint": False}],
+    }
+    page.goto(BASE_URL)
+    page.set_input_files("#txt-file", {
+        "name": "gradle-graph.json",
+        "mimeType": "application/json",
+        "buffer": json.dumps(data).encode(),
+    })
+    expect(page.locator("#current-file-name")).to_have_text("gradle-graph")
+    expect(page.locator("#txt-panel")).to_be_hidden()
+
+    page.get_by_text("Dependency JSON", exact=True).click()
+    with page.expect_download() as download:
+        page.click("#enlist-btn")
+    assert '"org.example:lib:2"' in download.value.path().read_text()
+
+    page.click("#open-graph-btn")
+    expect(page.locator("#graph g.node")).to_have_count(2)
+    expect(page.locator("#no-data")).to_be_hidden()
+    page.go_back()
+    page.click("#open-tree-btn")
+    expect(page.locator("#graph-container svg g.node")).to_have_count(2)
+    expect(page.locator("#no-data")).to_be_hidden()

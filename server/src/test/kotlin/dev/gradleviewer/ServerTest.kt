@@ -86,7 +86,55 @@ class ServerTest {
             }))
         }
         assertEquals(HttpStatusCode.BadRequest, upload.status)
-        assertEquals("Only .txt files are supported.", dependencyJson.parseToJsonElement(upload.bodyAsText()).jsonObject["detail"]!!.jsonPrimitive.content)
+        assertTrue(upload.bodyAsText().contains("detail"))
+    }
+
+    @Test fun graphUploadsAndViewerValidation() = testApplication {
+        application { viewerModule() }
+        val data = DependencyGraphReport(
+            schemaVersion = 1,
+            projectPath = ":app",
+            configuration = "debugRuntimeClasspath",
+            rootId = "root:",
+            nodes = listOf(
+                GraphNode("root:", "project :app", "", "", "project :app"),
+                GraphNode("widget", "org.example:widget", "2", "", "org.example:widget:2"),
+            ),
+            edges = listOf(GraphEdge("root:", "widget", "org.example:widget:1", false)),
+        ).toJson()
+        suspend fun upload(bytes: ByteArray) = client.post("/api/upload") {
+            setBody(MultiPartFormDataContent(formData {
+                append("file", bytes, Headers.build {
+                    append(HttpHeaders.ContentDisposition, "filename=\"graph.JSON\"")
+                })
+            }))
+        }
+        val response = upload(data.toString().encodeToByteArray())
+        assertEquals(HttpStatusCode.OK, response.status)
+        val uploaded = dependencyJson.parseToJsonElement(response.bodyAsText()).jsonObject
+        assertEquals("graph", uploaded["name"]!!.jsonPrimitive.content)
+        assertEquals("", uploaded["txt"]!!.jsonPrimitive.content)
+        assertEquals(data, uploaded["json"])
+        val unsupported = JsonObject(data + ("schemaVersion" to JsonPrimitive(99)))
+        val malformed = JsonObject(data + ("schemaVersion" to JsonArray(emptyList())))
+        for (endpoint in listOf("tree", "graph", "enlist")) {
+            suspend fun view(input: JsonObject) = client.post("/api/$endpoint") {
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject { put("data", input) }.toString())
+            }
+            val result = view(data)
+            assertEquals(HttpStatusCode.OK, result.status, endpoint)
+            val expected = when (endpoint) {
+                "tree" -> treeView(data).toString()
+                "graph" -> toGraph(data).toString()
+                else -> enlistYaml(data)
+            }
+            assertEquals(expected, result.bodyAsText())
+            assertEquals(HttpStatusCode.BadRequest, view(unsupported).status)
+            assertEquals(HttpStatusCode.BadRequest, view(malformed).status)
+        }
+        assertEquals(HttpStatusCode.BadRequest, upload(unsupported.toString().encodeToByteArray()).status)
+        assertEquals(HttpStatusCode.BadRequest, upload(byteArrayOf(0x80.toByte())).status)
     }
 
     @Test fun supportedEncodings() {

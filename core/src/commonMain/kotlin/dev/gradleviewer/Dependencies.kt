@@ -32,3 +32,11 @@ internal fun nodes(value: JsonElement?): List<JsonObject> {
 
 internal fun JsonObject.children() = nodes(get("children"))
 internal fun JsonObject.id() = text("module") + text("version").let { if (it.isEmpty()) "" else ":$it" }
+
+internal fun dependencyKeywords(filter: String?) =
+    filter.orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
+
+internal fun matchesDependency(module: String, keywords: List<String>) =
+    keywords.any { module.contains(it, ignoreCase = true) }
+
+internal fun isProjectModule(module: String) = module.startsWith("project ")

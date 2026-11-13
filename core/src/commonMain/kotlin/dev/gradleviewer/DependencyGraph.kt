@@ -1,11 +1,13 @@
 package dev.gradleviewer
 
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 fun toGraph(data: JsonObject, distance: Int? = null, exclude: String? = null): JsonObject {
+    data.graphReportOrNull()?.let { return it.graph(distance, exclude) }
     val graphNodes = linkedMapOf<String, JsonObject>()
     val edges = linkedMapOf<String, MutableSet<String>>()
     val parents = mutableSetOf<String>()
@@ -74,12 +76,19 @@ fun toGraph(data: JsonObject, distance: Int? = null, exclude: String? = null): J
             }
         }
     }
-    return buildJsonObject {
-        put("nodes", JsonArray(resultNodes))
-        put("edges", JsonArray(resultEdges))
-        put("metadata", buildJsonObject {
-            put("total_nodes", resultNodes.size)
-            put("total_edges", resultEdges.size)
-        })
-    }
+    return graphView(resultNodes, resultEdges)
+}
+
+internal fun graphView(
+    resultNodes: List<JsonElement>,
+    resultEdges: List<JsonElement>,
+    rootId: String? = null,
+): JsonObject = buildJsonObject {
+    if (rootId != null) put("rootId", rootId)
+    put("nodes", JsonArray(resultNodes))
+    put("edges", JsonArray(resultEdges))
+    put("metadata", buildJsonObject {
+        put("total_nodes", resultNodes.size)
+        put("total_edges", resultEdges.size)
+    })
 }

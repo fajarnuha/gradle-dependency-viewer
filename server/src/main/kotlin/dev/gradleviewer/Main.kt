@@ -45,6 +45,12 @@ fun decodeReport(bytes: ByteArray): String {
     }
 }
 
+private fun decodeGraphText(bytes: ByteArray): String = try {
+    bytes.decodeToString(throwOnInvalidSequence = true).removePrefix("\uFEFF")
+} catch (cause: java.nio.charset.CharacterCodingException) {
+    throw BadRequestException("Graph JSON must use UTF-8.", cause)
+}
+
 // Escape the script context as well as JSON strings, so report text cannot close a script tag.
 fun inlineJson(value: JsonElement?): String = (value ?: JsonNull).toString()
     .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
@@ -111,12 +117,23 @@ fun Application.viewerModule() {
                     if (part is PartData.FileItem && part.name == "file") {
                         val filename = part.originalFileName.orEmpty()
                         if (filename.isBlank()) throw BadRequestException("No file uploaded.")
-                        if (!filename.endsWith(".txt", ignoreCase = true)) throw BadRequestException("Only .txt files are supported.")
-                        val text = decodeReport(part.provider().readRemaining().readByteArray())
+                        val basename = filename.substringAfterLast('/').substringAfterLast('\\')
+                        val extension = basename.substringAfterLast('.', "").lowercase()
+                        if (extension !in setOf("txt", "json")) {
+                            throw BadRequestException("Only .txt and .json files are supported.")
+                        }
+                        val bytes = part.provider().readRemaining().readByteArray()
+                        val text = if (extension == "txt") decodeReport(bytes) else ""
+                        val data = if (extension == "json") {
+                            val json = dependencyJson.parseToJsonElement(decodeGraphText(bytes))
+                            require(json is JsonObject) { "Expected a dependency graph JSON object" }
+                            decodeDependencyGraph(json)
+                            json
+                        } else parseDependencies(text)
                         result = buildJsonObject {
-                            put("name", filename.substringAfterLast('/').substringAfterLast('\\').dropLast(4))
+                            put("name", basename.substringBeforeLast('.'))
                             put("txt", text)
-                            put("json", parseDependencies(text))
+                            put("json", data)
                         }
                     }
                 } finally { part.release() }
@@ -164,7 +181,10 @@ private fun runCli(args: Array<String>) {
         val data = dependencyJson.parseToJsonElement(file.readText()).jsonObject
         when (command) {
             "graph" -> toGraph(data, option("--distance")?.toInt(), option("--exclude")).toString()
-            "tree" -> filterDependencies(data, option("--filter"), "--project-only" in args).toString()
+            "tree" -> {
+                val filtered = filterDependencies(data, option("--filter"), "--project-only" in args)
+                if (filtered["schemaVersion"] is JsonPrimitive) treeView(filtered).toString() else filtered.toString()
+            }
             "enlist" -> enlistYaml(data)
             "summary" -> sampleSummary(data).toString()
             else -> error("Unknown command: $command")

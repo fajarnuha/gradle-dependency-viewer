@@ -18,22 +18,22 @@
     </a>
     <header class="hero">
       <h1>Gradle Dependency Viewer</h1>
-      <p>Upload your dependency TXT file or explore a pre-compiled open source project.</p>
+      <p>Upload a Gradle text report or dependency graph JSON or explore a pre-compiled open source project.</p>
     </header>
 
     <section class="card input-card" aria-label="Choose dependencies">
       <div class="input-card__section" id="upload-section">
         <form id="upload-form" class="upload-form">
-          <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="Upload dependency text file">
+          <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="Upload dependency file">
             <svg viewBox="0 0 24 24" width="40" height="40" stroke="currentColor" stroke-width="2" fill="none"
               stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
-            <span class="drop-zone__title">Drop your dependency TXT here</span>
-            <span class="drop-zone__prompt">or click to choose a .txt file</span>
-            <input type="file" name="file" id="txt-file" class="drop-zone__input" accept=".txt">
+            <span class="drop-zone__title">Drop your dependency file here</span>
+            <span class="drop-zone__prompt">or click to choose a .txt or .json file</span>
+            <input type="file" name="file" id="txt-file" class="drop-zone__input" accept=".txt,.json">
           </div>
           <p class="error" id="upload-error" role="alert" aria-live="polite"></p>
         </form>
@@ -72,7 +72,7 @@
     </section>
 
     <section class="card result-card result-card--empty" id="welcome-state">
-      <p>Upload a TXT or pick a project above. The result shows up here.</p>
+      <p>Upload a dependency file or pick a project above. The result shows up here.</p>
     </section>
 
     <section class="card result-card hidden" id="processing-state" aria-live="polite">
@@ -175,7 +175,7 @@
     <dialog class="confirm-dialog" id="clear-dialog" aria-labelledby="clear-dialog-title">
       <form method="dialog">
         <h2 id="clear-dialog-title">Remove uploaded data?</h2>
-        <p>This removes your uploaded TXT and its dependency JSON from this browser tab. You'll need to upload
+        <p>This removes your uploaded dependency data from this browser tab. You'll need to upload
           the file again to view it.</p>
         <div class="dialog-actions">
           <button class="dialog-btn" value="cancel" autofocus>Cancel</button>

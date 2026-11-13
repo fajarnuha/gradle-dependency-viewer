@@ -19,8 +19,8 @@ jobs:
         with:
           node-version: '22'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Test Kotlin core and Ktor, build distribution
-        run: ./gradlew --no-daemon :core:allTests :server:test :server:installDist
+      - name: Test Kotlin core, Ktor, and Gradle plugin
+        run: ./gradlew --no-daemon :core:allTests :server:test :server:installDist :gradle-plugin:test
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true

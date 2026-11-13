@@ -1355,7 +1355,7 @@
 
             // Find the root. The converter always emits "root:", but data from other sources may not:
             // in that case synthesize one that points to every parentless node.
-            let root = nodes.find(n => n.module === 'root');
+            let root = data.rootId ? byId.get(data.rootId) : nodes.find(n => n.module === 'root');
             if (!root) {
                 root = {
                     id: 'root:', module: 'root', version: '', resolution: '', full: 'root', name: 'root',
@@ -2310,10 +2310,10 @@
                     }
                     showBanner(uploaded
                         ? 'No dependencies match the current filter.'
-                        : 'Your upload is no longer available in this tab. Please upload the TXT again.');
+                        : 'Your upload is no longer available in this tab. Please upload the dependency file again.');
                 } catch (error) {
                     console.error('Failed to process the uploaded data:', error);
-                    showBanner('Failed to process your upload. Please upload the TXT again.');
+                    showBanner('Failed to process your upload. Please upload the dependency file again.');
                 }
             } else {
                 showBanner();

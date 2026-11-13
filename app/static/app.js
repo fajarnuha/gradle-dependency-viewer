@@ -49,8 +49,8 @@ function clearError() {
   errorEl.textContent = '';
 }
 
-function isTxtFile(file) {
-  return file && file.name.toLowerCase().endsWith('.txt');
+function isDependencyFile(file) {
+  return file && /\.(txt|json)$/i.test(file.name);
 }
 
 function readSession(key) {
@@ -194,8 +194,8 @@ async function handleUpload(file) {
   clearError();
   if (!file) return;
 
-  if (!isTxtFile(file)) {
-    showError('Only .txt files are supported.');
+  if (!isDependencyFile(file)) {
+    showError('Only .txt and .json files are supported.');
     return;
   }
 
