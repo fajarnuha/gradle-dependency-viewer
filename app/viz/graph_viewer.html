@@ -345,6 +345,30 @@
             accent-color: var(--primary);
         }
 
+        .legend-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .legend-header .section-title { margin: 0; }
+
+        .legend-actions { display: flex; align-items: center; gap: 8px; }
+
+        .legend-action {
+            padding: 2px;
+            border: 0;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .legend-action:hover { color: var(--text-main); }
+        .legend-action:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+        .legend-action svg { display: block; }
+
         .legend {
             display: flex;
             flex-direction: column;
@@ -1131,7 +1155,15 @@
             </section>
 
             <section>
-                <h2 class="section-title">Legend</h2>
+                <div class="legend-header">
+                    <h2 class="section-title">Legend</h2>
+                    <div class="legend-actions">
+                        <button type="button" class="legend-action" id="legend-select-all">Select all</button>
+                        <button type="button" class="legend-action" id="legend-refresh" title="Redraw graph with selected categories" aria-label="Redraw graph with selected categories">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
+                        </button>
+                    </div>
+                </div>
                 <div class="legend" id="legend"></div>
             </section>
 
@@ -1302,6 +1334,7 @@
             maxLevel: 0,
             hidden: new Set(),
             hiddenCats: new Set(),
+            filteredCats: new Set(),
             selected: null,
             hovered: null,
             matches: [],
@@ -1421,8 +1454,9 @@
             return base + Math.min(8, Math.sqrt(Math.max(0, d.dependents - 1)) * 0.9);
         }
 
-        const visibleNodes = () => state.nodes.filter(n => !state.hidden.has(n.id));
-        const visibleLinks = () => state.links.filter(l => !state.hidden.has(l.source.id) && !state.hidden.has(l.target.id));
+        const isVisible = n => !state.hidden.has(n.id) && !state.filteredCats.has(n.category);
+        const visibleNodes = () => state.nodes.filter(isVisible);
+        const visibleLinks = () => state.links.filter(l => isVisible(l.source) && isVisible(l.target));
 
         // ------------------------------------------------------------------
         // Layered layout: every node gets a target slot (tx, ty) inside the band of its level.
@@ -1444,7 +1478,7 @@
             levels.forEach((level, li) => {
                 const members = byLevel.get(level);
                 members.forEach(n => {
-                    const placed = n.parents.filter(p => p.level < level && p.tx !== undefined && !state.hidden.has(p.id));
+                    const placed = n.parents.filter(p => p.level < level && p.tx !== undefined && isVisible(p));
                     n._key = placed.length ? d3.mean(placed, p => p.tx) : 0;
                 });
                 members.sort((a, b) =>
@@ -2164,6 +2198,20 @@
             });
             document.getElementById('search-prev').addEventListener('click', () => stepMatch(-1));
             document.getElementById('search-next').addEventListener('click', () => stepMatch(1));
+
+            document.getElementById('legend-select-all').addEventListener('click', () => {
+                state.hiddenCats.clear();
+                CATEGORIES.forEach(c => svg.classed(`hide-cat-${c.key}`, false));
+                renderLegend();
+            });
+            document.getElementById('legend-refresh').addEventListener('click', () => {
+                state.filteredCats = new Set(state.hiddenCats);
+                if (state.selected && !isVisible(state.selected)) select(null);
+                if (state.hovered && !isVisible(state.hovered)) hover(null);
+                relayout();
+                runSearch();
+                setTimeout(() => fitToView(), 450);
+            });
 
             document.getElementById('zoom-in').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1.4));
             document.getElementById('zoom-out').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.4));
