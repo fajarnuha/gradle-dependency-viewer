@@ -155,7 +155,7 @@ Rebuild and restart after changing bundled samples or frontend files. CSS and JS
 
 The deployment workflow runs on `v*` tags. It tests the Kotlin JVM code, publishes the image to GHCR, replaces the production container over SSH and waits for it to become healthy. Configure `SSH_HOST`, `SSH_USERNAME` and `SSH_KEY` in GitHub Actions secrets; registry access uses `GITHUB_TOKEN`.
 
-The release version lives in `gradle.properties`. After committing application changes, run `python3 scripts/up_version.py` from the repository root to increment the patch version, commit it, create a `v*` tag and push the current branch and tag. Pushing the tag triggers production deployment.
+Run `./gradlew bumpVersion` from the repository root for a minor release. Pass `--bump=major`, `--bump=minor`, or `--bump=patch` to choose the version component. The task requires a clean Git working tree and a successful server build before updating `gradle.properties`. It commits the version bump, tags it, and pushes the current branch and the new tag. Pushing the tag triggers production deployment.
 
 ### Generating a bundled sample (Jenkins)
 
