@@ -40,7 +40,7 @@ pluginManagement {
 ```
 
 Apply `id("com.fajarnuha.dependency-graph")` in the module you want to inspect.
-The plugin uses the Gradle 8.14.3 API and requires JDK 17 or later.
+The plugin is built against the Gradle 9.6.0 API and requires JDK 17 or later.
 
 ```bash
 ./gradlew :app:exportDependencyGraph -PdependencyGraphConfiguration=debugRuntimeClasspath
