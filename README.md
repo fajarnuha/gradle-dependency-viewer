@@ -30,16 +30,28 @@ Access the UI at [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 #### Export JSON with the Gradle plugin
 
-Add this repository as an included plugin build in your project's `settings.gradle.kts`.
-Use the path to your checkout:
+Add Maven Central to the plugin repositories in your project's `settings.gradle.kts`:
 
 ```kotlin
 pluginManagement {
-    includeBuild("../gradle-dependency-viewer")
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
 }
 ```
 
-Apply `id("com.fajarnuha.dependency-graph")` in the module you want to inspect.
+Apply the plugin in the module you want to inspect:
+
+```kotlin
+plugins {
+    id("com.fajarnuha.dependency-graph") version "0.1.10"
+}
+```
+
+To use a local checkout, add `includeBuild("../gradle-dependency-viewer")` to
+`pluginManagement` and omit the version from the plugin declaration.
+
 The plugin is built against the Gradle 9.6.0 API and requires JDK 17 or later.
 
 ```bash

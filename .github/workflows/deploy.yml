@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version in gradle.properties to publish to Maven Central
+        required: true
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -11,6 +17,7 @@ env:
 
 jobs:
   build-and-push:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -58,6 +65,61 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  publish-maven-central:
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check release version
+        env:
+          EXPECTED_VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.version }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -eu
+          version=$(sed -n 's/^version=//p' gradle.properties)
+          if [[ "$EVENT_NAME" == push ]]; then
+            version="v$version"
+          fi
+          if [[ -z "$EXPECTED_VERSION" || "$version" != "$EXPECTED_VERSION" ]]; then
+            echo "::error::The requested release does not match the version in gradle.properties."
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test plugin release
+        run: ./gradlew --no-daemon :core:jvmTest :gradle-plugin:test
+
+      - name: Publish to Maven Central
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_SIGNING_PASSWORD }}
+        run: |
+          set -eu
+          if [[ -z "$ORG_GRADLE_PROJECT_mavenCentralUsername" ||
+                -z "$ORG_GRADLE_PROJECT_mavenCentralPassword" ||
+                -z "$ORG_GRADLE_PROJECT_signingInMemoryKey" ||
+                -z "$ORG_GRADLE_PROJECT_signingInMemoryKeyPassword" ]]; then
+            echo "::error::Set the four Maven Central and signing secrets before publishing."
+            exit 1
+          fi
+          ./gradlew --no-daemon publishAndReleaseToMavenCentral
 
   deploy:
     needs: build-and-push

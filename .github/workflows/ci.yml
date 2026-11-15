@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -21,6 +21,32 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Test Kotlin core, Ktor, and Gradle plugin
         run: ./gradlew --no-daemon :core:allTests :server:test :server:installDist :gradle-plugin:test
+      - name: Test the staged Gradle plugin
+        run: |
+          set -eu
+          version=$(sed -n 's/^version=//p' gradle.properties)
+          repo="$RUNNER_TEMP/plugin-test-repository"
+          consumer="$RUNNER_TEMP/plugin-test-consumer"
+          ./gradlew --no-daemon :core:publishToMavenLocal :gradle-plugin:publishToMavenLocal "-Dmaven.repo.local=$repo"
+
+          mkdir -p "$consumer"
+          cat > "$consumer/settings.gradle.kts" <<'EOF'
+          pluginManagement {
+              repositories {
+                  maven { url = uri(System.getenv("PLUGIN_TEST_REPOSITORY")) }
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "plugin-test-consumer"
+          EOF
+          cat > "$consumer/build.gradle.kts" <<EOF
+          plugins {
+              java
+              id("com.fajarnuha.dependency-graph") version "$version"
+          }
+          EOF
+          PLUGIN_TEST_REPOSITORY="$repo" ./gradlew --no-daemon -p "$consumer" exportDependencyGraph
+          test -s "$consumer/build/reports/dependency-graph/runtimeClasspath.json"
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true

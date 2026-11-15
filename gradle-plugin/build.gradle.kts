@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     `java-gradle-plugin`
+    id("com.vanniktech.maven.publish")
 }
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }

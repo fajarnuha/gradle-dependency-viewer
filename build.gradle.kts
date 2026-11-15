@@ -8,9 +8,52 @@ plugins {
     kotlin("multiplatform") version "2.3.21" apply false
     kotlin("jvm") version "2.3.21" apply false
     kotlin("plugin.serialization") version "2.3.21" apply false
+    id("com.vanniktech.maven.publish") version "0.37.0" apply false
 }
 
 allprojects { version = providers.gradleProperty("version").get() }
+
+subprojects {
+    pluginManager.withPlugin("com.vanniktech.maven.publish") {
+        group = "com.fajarnuha"
+        val projectName = if (name == "core") "Gradle Dependency Viewer Core" else "Gradle Dependency Viewer Plugin"
+        val projectDescription = if (name == "core") {
+            "Shared dependency graph model and serialization for Gradle Dependency Viewer."
+        } else {
+            "Gradle plugin that exports resolved dependency graphs as JSON."
+        }
+        val repositoryUrl = "https://github.com/fajarnuha/gradle-dependency-viewer"
+        extensions.configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
+            publishToMavenCentral()
+            if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+                signAllPublications()
+            }
+            pom {
+                name.set(projectName)
+                description.set(projectDescription)
+                url.set(repositoryUrl)
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("$repositoryUrl/blob/main/LICENSE")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("fajarnuha")
+                        name.set("Fajar Ulin Nuha")
+                        url.set("https://fajarnuha.com")
+                    }
+                }
+                scm {
+                    url.set(repositoryUrl)
+                    connection.set("scm:git:$repositoryUrl.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/fajarnuha/gradle-dependency-viewer.git")
+                }
+            }
+        }
+    }
+}
 
 abstract class BumpVersion @Inject constructor(private val execOperations: ExecOperations) : DefaultTask() {
     enum class Bump { MAJOR, MINOR, PATCH }
