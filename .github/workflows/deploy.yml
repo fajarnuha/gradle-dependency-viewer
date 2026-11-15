@@ -110,7 +110,16 @@ jobs:
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_SIGNING_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_SIGNING_PASSWORD }}
-        run: ./gradlew --no-daemon publishAndReleaseToMavenCentral
+        run: |
+          set -eu
+          if [[ -z "$ORG_GRADLE_PROJECT_mavenCentralUsername" ||
+                -z "$ORG_GRADLE_PROJECT_mavenCentralPassword" ||
+                -z "$ORG_GRADLE_PROJECT_signingInMemoryKey" ||
+                -z "$ORG_GRADLE_PROJECT_signingInMemoryKeyPassword" ]]; then
+            echo "::error::Set the four Maven Central and signing secrets before publishing."
+            exit 1
+          fi
+          ./gradlew --no-daemon publishAndReleaseToMavenCentral
 
   deploy:
     needs: build-and-push

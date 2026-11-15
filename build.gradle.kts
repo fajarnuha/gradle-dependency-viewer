@@ -25,7 +25,9 @@ subprojects {
         val repositoryUrl = "https://github.com/fajarnuha/gradle-dependency-viewer"
         extensions.configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
             publishToMavenCentral()
-            signAllPublications()
+            if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+                signAllPublications()
+            }
             pom {
                 name.set(projectName)
                 description.set(projectDescription)
