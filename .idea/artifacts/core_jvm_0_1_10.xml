@@ -2,7 +2,7 @@
   <artifact type="jar" name="core-jvm-0.1.10">
     <output-path>$PROJECT_DIR$/core/build/libs</output-path>
     <root id="archive" name="core-jvm-0.1.10.jar">
-      <element id="module-output" name="gradle-dependency-viewer.core.jvmMain" />
+      <element id="module-output" name="gradle-graph.core.jvmMain" />
     </root>
   </artifact>
 </component>

@@ -168,7 +168,7 @@ fun main(args: Array<String>) {
 
 /** The installed distribution is also the CLI used by Jenkins; diagnostics stay on stderr. */
 private fun runCli(args: Array<String>) {
-    require(args.size >= 2) { "Usage: gradle-dependency-viewer <parse|graph|tree|enlist|summary> FILE [options]" }
+    require(args.size >= 2) { "Usage: gradle-graph <parse|graph|tree|enlist|summary> FILE [options]" }
     val command = args[0]
     val file = File(args[1])
     fun option(name: String): String? = args.indexOf(name).takeIf { it >= 0 }?.let {

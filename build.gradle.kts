@@ -15,14 +15,14 @@ allprojects { version = providers.gradleProperty("version").get() }
 
 subprojects {
     pluginManager.withPlugin("com.vanniktech.maven.publish") {
-        group = "com.fajarnuha"
-        val projectName = if (name == "core") "Gradle Dependency Viewer Core" else "Gradle Dependency Viewer Plugin"
+        group = "com.fajarnuha.gradle-graph"
+        val projectName = if (name == "core") "Gradle Graph Core" else "Gradle Graph Plugin"
         val projectDescription = if (name == "core") {
-            "Shared dependency graph model and serialization for Gradle Dependency Viewer."
+            "Shared dependency graph model and serialization for Gradle Graph."
         } else {
             "Gradle plugin that exports resolved dependency graphs as JSON."
         }
-        val repositoryUrl = "https://github.com/fajarnuha/gradle-dependency-viewer"
+        val repositoryUrl = "https://github.com/fajarnuha/gradle-graph"
         extensions.configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
             publishToMavenCentral()
             if (providers.gradleProperty("signingInMemoryKey").isPresent) {
@@ -48,7 +48,7 @@ subprojects {
                 scm {
                     url.set(repositoryUrl)
                     connection.set("scm:git:$repositoryUrl.git")
-                    developerConnection.set("scm:git:ssh://git@github.com/fajarnuha/gradle-dependency-viewer.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/fajarnuha/gradle-graph.git")
                 }
             }
         }

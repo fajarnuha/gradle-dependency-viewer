@@ -14,7 +14,7 @@ java {
 gradlePlugin {
     plugins {
         register("dependencyGraph") {
-            id = "com.fajarnuha.dependency-graph"
+            id = "com.fajarnuha.gradle-graph"
             implementationClass = "com.fajarnuha.dependency_graph.DependencyGraphPlugin"
         }
     }

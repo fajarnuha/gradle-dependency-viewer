@@ -360,9 +360,9 @@ def github(monkeypatch):
 
 def test_check_access_accepts_a_token_that_can_push(github):
     github.response = {"permissions": {"pull": True, "push": True}}
-    assert gs.check_access("fajarnuha/gradle-dependency-viewer") == {}
+    assert gs.check_access("fajarnuha/gradle-graph") == {}
     request = github.requests[0]
-    assert request.full_url == "https://api.github.com/repos/fajarnuha/gradle-dependency-viewer"
+    assert request.full_url == "https://api.github.com/repos/fajarnuha/gradle-graph"
     assert request.get_header("Authorization") == "Bearer test-token"
 
 
@@ -377,14 +377,14 @@ def test_check_access_accepts_a_token_that_can_push(github):
 def test_check_access_rejects_credentials_that_cannot_push(github, capsys, response, message):
     github.response = response
     with pytest.raises(SystemExit) as exc:
-        gs.check_access("fajarnuha/gradle-dependency-viewer")
+        gs.check_access("fajarnuha/gradle-graph")
     assert message in str(exc.value)
 
 
 def test_check_access_needs_a_token(monkeypatch):
     monkeypatch.delenv("GH_TOKEN", raising=False)
     with pytest.raises(SystemExit):
-        gs.check_access("fajarnuha/gradle-dependency-viewer")
+        gs.check_access("fajarnuha/gradle-graph")
 
 
 def test_convert_rejects_output_without_dependencies(tmp_path):
