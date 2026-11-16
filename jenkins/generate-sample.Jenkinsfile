@@ -42,11 +42,11 @@ pipeline {
     }
 
     environment {
-        VIEWER_REPO = 'fajarnuha/gradle-dependency-viewer'
+        VIEWER_REPO = 'fajarnuha/gradle-graph'
         GITHUB_CREDENTIALS_ID = 'github-credentials'
         SAMPLE_DIR = 'app/static/sample'
-        GIT_BOT_NAME = 'gradle-dependency-viewer bot'
-        GIT_BOT_EMAIL = 'gradle-dependency-viewer-bot@users.noreply.github.com'
+        GIT_BOT_NAME = 'gradle-graph bot'
+        GIT_BOT_EMAIL = 'gradle-graph-bot@users.noreply.github.com'
         GRADLE_ARGS = '--no-daemon --console=plain'
         AGY = '/home/fajar/.local/bin/agy'
     }
@@ -75,7 +75,7 @@ pipeline {
                 script {
                     // Outside the checkout, so nothing downloaded can end up in the pull request.
                     env.WORK_DIR = "${env.WORKSPACE}@tmp/generate-sample"
-                    env.GRADLE_CACHE_DIR = "${env.HOME}/.cache/gradle-dependency-viewer/gradle"
+                    env.GRADLE_CACHE_DIR = "${env.HOME}/.cache/gradle-graph/gradle"
                     exportEnv(sh(returnStdout: true, script: '''
                         python3 jenkins/generate_sample.py repo-info "$REPO_URL" --ref "$GIT_REF" --name "$SAMPLE_NAME"
                     '''))

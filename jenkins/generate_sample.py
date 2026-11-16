@@ -34,7 +34,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = REPO_ROOT / "app"
 SAMPLE_DIR = APP_DIR / "static" / "sample"
 
-VIEWER_CLI = REPO_ROOT / "server/build/install/gradle-dependency-viewer/bin/gradle-dependency-viewer"
+VIEWER_CLI = REPO_ROOT / "server/build/install/gradle-graph/bin/gradle-graph"
 
 
 def kotlin_cli(command: str, path: Path) -> dict:
@@ -456,7 +456,7 @@ def github_api(path: str, payload: dict | None = None) -> dict:
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "gradle-dependency-viewer-generate-sample",
+            "User-Agent": "gradle-graph-generate-sample",
         },
         method="POST" if payload is not None else "GET",
     )

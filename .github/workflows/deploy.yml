@@ -154,7 +154,7 @@ jobs:
             # Pull the new image
             docker pull "$FULL_IMAGE"
 
-            # Stop and remove existing container
+            # Use the existing container name on the deployment host.
             docker stop gradle-dependency-viewer || true
             docker rm gradle-dependency-viewer || true
 

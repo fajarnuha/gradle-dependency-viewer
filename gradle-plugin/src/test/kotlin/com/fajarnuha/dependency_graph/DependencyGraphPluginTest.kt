@@ -22,7 +22,7 @@ class DependencyGraphPluginTest {
         write("build.gradle", """
             plugins {
                 id 'java'
-                id 'com.fajarnuha.dependency-graph'
+                id 'com.fajarnuha.gradle-graph'
             }
             allprojects {
                 repositories { maven { url = rootProject.file('repo') } }
@@ -77,7 +77,7 @@ class DependencyGraphPluginTest {
         val build = """
             plugins {
                 id 'java'
-                id 'com.fajarnuha.dependency-graph'
+                id 'com.fajarnuha.gradle-graph'
             }
             repositories { maven { url = file('repo') } }
         """.trimIndent()

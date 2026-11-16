@@ -9,7 +9,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 APP_ROOT = ROOT / "app"
 SAMPLE_DIR = APP_ROOT / "static/sample"
-CLI = ROOT / "server/build/install/gradle-dependency-viewer/bin/gradle-dependency-viewer"
+CLI = ROOT / "server/build/install/gradle-graph/bin/gradle-graph"
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -12,10 +12,10 @@ RUN --mount=type=cache,target=/root/.gradle \
 FROM eclipse-temurin:21-jre-jammy
 RUN groupadd --gid 10001 viewer && useradd --uid 10001 --gid viewer --no-create-home viewer
 WORKDIR /app
-COPY --from=builder /app/server/build/install/gradle-dependency-viewer/ ./
+COPY --from=builder /app/server/build/install/gradle-graph/ ./
 ENV PORT=8000 JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
 USER viewer
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl --fail --silent http://127.0.0.1:${PORT}/healthz || exit 1
-ENTRYPOINT ["/app/bin/gradle-dependency-viewer"]
+ENTRYPOINT ["/app/bin/gradle-graph"]

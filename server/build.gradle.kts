@@ -11,7 +11,7 @@ java {
 }
 application {
     mainClass.set("dev.gradleviewer.MainKt")
-    applicationName = "gradle-dependency-viewer"
+    applicationName = "gradle-graph"
 }
 
 dependencies {

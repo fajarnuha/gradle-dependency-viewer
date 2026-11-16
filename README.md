@@ -1,4 +1,4 @@
-# Gradle Dependency Viewer
+# Gradle Graph
 
 Visualize Gradle dependency reports as interactive graphs and trees. Upload a JSON graph exported by the Gradle plugin or a text report from the Gradle `dependencies` task.
 
@@ -45,11 +45,13 @@ Apply the plugin in the module you want to inspect:
 
 ```kotlin
 plugins {
-    id("com.fajarnuha.dependency-graph") version "0.1.10"
+    id("com.fajarnuha.gradle-graph") version "0.1.11"
 }
 ```
 
-To use a local checkout, add `includeBuild("../gradle-dependency-viewer")` to
+When upgrading from `0.1.10`, replace the plugin ID `com.fajarnuha.dependency-graph` with `com.fajarnuha.gradle-graph`.
+
+To use a local checkout, add `includeBuild("../gradle-graph")` to
 `pluginManagement` and omit the version from the plugin declaration.
 
 The plugin is built against the Gradle 9.6.0 API and requires JDK 17 or later.
@@ -136,12 +138,12 @@ The shared core logic and tests live in `commonMain` and `commonTest`. JavaScrip
 The installed distribution can run the server or the CLI, without Gradle:
 
 ```bash
-server/build/install/gradle-dependency-viewer/bin/gradle-dependency-viewer
-server/build/install/gradle-dependency-viewer/bin/gradle-dependency-viewer parse my_app.txt --output my_app.json
-server/build/install/gradle-dependency-viewer/bin/gradle-dependency-viewer tree my_app.json --filter androidx --output filtered.json
-server/build/install/gradle-dependency-viewer/bin/gradle-dependency-viewer tree my_app.json --project-only
-server/build/install/gradle-dependency-viewer/bin/gradle-dependency-viewer graph my_app.json --distance 2 --exclude kotlin --output graph.json
-server/build/install/gradle-dependency-viewer/bin/gradle-dependency-viewer enlist my_app.json --output dependencies.yaml
+server/build/install/gradle-graph/bin/gradle-graph
+server/build/install/gradle-graph/bin/gradle-graph parse my_app.txt --output my_app.json
+server/build/install/gradle-graph/bin/gradle-graph tree my_app.json --filter androidx --output filtered.json
+server/build/install/gradle-graph/bin/gradle-graph tree my_app.json --project-only
+server/build/install/gradle-graph/bin/gradle-graph graph my_app.json --distance 2 --exclude kotlin --output graph.json
+server/build/install/gradle-graph/bin/gradle-graph enlist my_app.json --output dependencies.yaml
 ```
 
 CLI commands print to stdout unless `--output` is supplied. `summary FILE` prints entry counts and validated sample metadata as JSON.
@@ -149,8 +151,8 @@ CLI commands print to stdout unless `--output` is supplied. `summary FILE` print
 ### Docker and deployment
 
 ```bash
-docker build -t gradle-dependency-viewer .
-docker run --rm -p 8000:8000 gradle-dependency-viewer
+docker build -t gradle-graph .
+docker run --rm -p 8000:8000 gradle-graph
 ```
 
 Docker builds and tests the JVM code, then copies the installed distribution into a Temurin 21 JRE image. It runs as UID 10001 and checks `/healthz`. Static assets and samples are packaged in the application resources. The server remains stateless and needs no data volume.
@@ -185,7 +187,7 @@ To set it up, create a Pipeline job ("Pipeline script from SCM") on this reposit
 | `CACHE_GRADLE` | `true` | Keep Gradle's downloads on the agent between builds |
 | `DRY_RUN` | `false` | Only build and archive the JSON |
 
-With `CACHE_GRADLE` on, the Gradle distribution and dependencies stay in `~/.cache/gradle-dependency-viewer/gradle` on the agent, so only the first build of a project downloads everything. Builds run one at a time because they share that cache. To start over, delete that directory on the agent.
+With `CACHE_GRADLE` on, the Gradle distribution and dependencies stay in `~/.cache/gradle-graph/gradle` on the agent, so only the first build of a project downloads everything. Builds run one at a time because they share that cache. To start over, delete that directory on the agent.
 
 When `GRADLE_COMMAND` is blank, the job sends the project's Gradle files (`settings.gradle(.kts)`, `build.gradle(.kts)`, `gradle.properties`) to the Antigravity CLI and asks which module and debug runtime classpath configuration to dump, so no Gradle run is needed to find them. The CLI gets no tools and cannot run commands; its answer must still be a `./gradlew` command or the build fails. If it answers `UNKNOWN`, the build stops and names the reason, and you can re-run it with `GRADLE_COMMAND` set.
 

@@ -28,6 +28,9 @@ jobs:
           repo="$RUNNER_TEMP/plugin-test-repository"
           consumer="$RUNNER_TEMP/plugin-test-consumer"
           ./gradlew --no-daemon :core:publishToMavenLocal :gradle-plugin:publishToMavenLocal "-Dmaven.repo.local=$repo"
+          for artifact in core core-jvm core-js gradle-plugin; do
+            test -s "$repo/com/fajarnuha/gradle-graph/$artifact/$version/$artifact-$version.pom"
+          done
 
           mkdir -p "$consumer"
           cat > "$consumer/settings.gradle.kts" <<'EOF'
@@ -42,7 +45,7 @@ jobs:
           cat > "$consumer/build.gradle.kts" <<EOF
           plugins {
               java
-              id("com.fajarnuha.dependency-graph") version "$version"
+              id("com.fajarnuha.gradle-graph") version "$version"
           }
           EOF
           PLUGIN_TEST_REPOSITORY="$repo" ./gradlew --no-daemon -p "$consumer" exportDependencyGraph
